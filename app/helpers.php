@@ -65,6 +65,39 @@ function base_path(string $path = '/'): string
 }
 
 /**
+ * Убрать из чужого HTML всё исполняемое.
+ *
+ * Документы приходят с сайта AUMA и встраиваются в нашу страницу. Атрибут
+ * sandbox у фрейма не подходит: с ним фрейм вообще не создаётся и документ
+ * не видно. Поэтому опасное вырезаем из разметки заранее.
+ */
+function sanitize_html(string $html): string
+{
+    // скрипты — целиком, вместе с содержимым
+    $html = preg_replace('#<script\b[^>]*>.*?</script>#is', ' ', $html) ?? $html;
+    $html = preg_replace('#<script\b[^>]*/?>#is', ' ', $html) ?? $html;
+
+    // элементы, которые могут исполнять код или перехватывать навигацию
+    $html = preg_replace(
+        '#</?(iframe|object|embed|applet|frame|frameset|form|base|link\s+rel=["\']?import)\b[^>]*>#is',
+        ' ',
+        $html
+    ) ?? $html;
+
+    // обработчики событий вида onclick="..."
+    $html = preg_replace('#\son[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)#is', ' ', $html) ?? $html;
+
+    // ссылки, начинающиеся с javascript:
+    $html = preg_replace(
+        '#\b(href|src|action)\s*=\s*("|\')?\s*javascript:[^"\'>\s]*#is',
+        '$1="#"',
+        $html
+    ) ?? $html;
+
+    return $html;
+}
+
+/**
  * Куда вернуть пользователя после входа. Принимаем только собственные
  * пути — иначе получится открытый редирект на чужой сайт.
  */

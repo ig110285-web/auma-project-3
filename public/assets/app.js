@@ -77,6 +77,11 @@ function esc(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/** Ссылка на просмотрщик: документ открывается внутри страницы сайта. */
+function viewLink(doc) {
+    return url('/view', { id: doc.id });
+}
+
 /** Иконка файла. У схем подключения она зелёная, у остальных синяя. */
 function fileIcon(doc) {
     const isScheme = doc && doc.doc_type === 'scheme';
@@ -154,7 +159,7 @@ function renderDocs() {
                 <div class="file-cell">
                     ${fileIcon(d)}
                     <div style="min-width:0">
-                        <a class="file-name" href="${esc(d.download_url)}?mode=view" target="_blank"
+                        <a class="file-name" href="${esc(viewLink(d))}" target="_blank"
                            rel="noopener" title="Открыть для просмотра">${esc(d.filename)}</a>
                         <div class="file-kind">${esc(d.doc_type_title)}${d.folder_code ? ' · ' + esc(d.folder_code) : ''}</div>
                     </div>
@@ -175,7 +180,7 @@ function renderDocs() {
                     <button class="act star${d.favorite ? ' on' : ''}" data-act="star" data-id="${d.id}" title="В избранное">
                         <svg viewBox="0 0 24 24" width="17" height="17"><path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8L12 4Z" fill="${d.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
                     </button>
-                    <a class="act view" href="${esc(d.download_url)}?mode=view" target="_blank"
+                    <a class="act view" href="${esc(viewLink(d))}" target="_blank"
                        rel="noopener" title="Посмотреть без скачивания">
                         <svg viewBox="0 0 24 24" width="17" height="17"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
                     </a>

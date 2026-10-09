@@ -358,6 +358,32 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 .toast.err { border-left-color: var(--danger); }
 .toast.ok { border-left-color: #12b76a; }
 
+/* ---------------- Просмотрщик документа ---------------- */
+
+.viewer-body { margin: 0; background: #fff; height: 100vh; display: flex; flex-direction: column; }
+
+.viewer-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--line);
+    flex: 0 0 auto;
+}
+.viewer-back {
+    width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+    border: 1px solid var(--line); color: var(--ink-2); flex: 0 0 auto;
+}
+.viewer-back:hover { background: #f7f8fa; color: var(--ink); }
+.viewer-icon {
+    width: 30px; height: 30px; border-radius: 8px; background: #e7f8ef; color: #12b76a;
+    display: grid; place-items: center; flex: 0 0 auto;
+}
+.viewer-icon.pdf { background: var(--blue-soft); color: var(--blue); }
+.viewer-info { min-width: 0; flex: 1; }
+.viewer-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.viewer-meta { font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.viewer-dl { flex: 0 0 auto; text-decoration: none; }
+
+.viewer-frame { flex: 1; width: 100%; border: 0; display: block; background: #fff; }
+
 /* ---------------- Страница входа ---------------- */
 
 .auth-body { display: grid; place-items: center; min-height: 100vh; padding: 24px; }

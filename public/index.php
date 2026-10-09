@@ -79,6 +79,35 @@ switch ($path) {
         require BASE_DIR . '/app/views/dashboard.php';
         break;
 
+    case '/view':
+        // Просмотр документа внутри страницы сайта: HTML-файлы некоторые
+        // клиенты не показывают, если отдать их как самостоятельную страницу.
+        $docId = (int) ($_GET['id'] ?? 0);
+        if (!auth_user()) {
+            header('Location: ' . base_path('/login') . '?next=' . rawurlencode('/view?id=' . $docId));
+            exit;
+        }
+        $doc = db_one('SELECT * FROM documents WHERE id = ?', [$docId]);
+        if (!$doc) {
+            http_response_code(404);
+            header('Content-Type: text/html; charset=utf-8');
+            echo '<!doctype html><meta charset="utf-8"><title>404</title>'
+               . '<p style="font:16px system-ui;padding:40px">Документ не найден. '
+               . '<a href="' . e(base_path('/')) . '">На главную</a></p>';
+            exit;
+        }
+        $isHtml = str_starts_with((string) $doc['mime'], 'text/html');
+        $embed = '';
+        if ($isHtml) {
+            $stored = upload_dir() . '/' . basename((string) $doc['stored_name']);
+            if (is_file($stored)) {
+                // документ чужой — вычищаем из него всё исполняемое
+                $embed = sanitize_html((string) file_get_contents($stored));
+            }
+        }
+        require BASE_DIR . '/app/views/viewer.php';
+        break;
+
     default:
         http_response_code(404);
         header('Content-Type: text/html; charset=utf-8');
