@@ -1,0 +1,12 @@
+# Настройки не в репозитории
+/app/config.php
+
+# Скачанные документы
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# Черновики и отладка
+/.probe/
+*.log
+.DS_Store
+Thumbs.db

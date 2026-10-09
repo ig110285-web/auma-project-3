@@ -1,1 +1,85 @@
-# auma-project-3
+﻿# auma-project-3
+
+Панель управления технической документацией: по номеру заказа подтягивает
+документы с сайта AUMA и складывает их в общее хранилище с фильтрами,
+папками и владельцами файлов.
+
+## Что умеет
+
+- **Регистрация и вход** по email с паролем.
+- **Загрузить характеристики** — по номеру заказа скачивает Technical Data Sheet
+  с сайта AUMA. Формат выбирается: `web` (htm) или `pdf`.
+- **Загрузить схему пдкл.** — по номеру заказа получает схему подключения (PDF)
+  и попутно определяет артикул изделия.
+- **Таблица документов**: File, Data Uploaded, Article, Order, File Size,
+  File Owner, Action. **Фильтр есть у каждой колонки.**
+- **Папки по артикулу**: документ с артикулом `SQEX-07.2` попадает в папку `SQEx`,
+  с `SAEX-10.2` — в `SAEx`, и так далее по сериям SA / SAEx / SQ / SQEx.
+- **Звезда** — в избранное, **три точки** — меню «Отправить на почту» и «Удалить файл».
+- Корзина, счётчик хранилища.
+
+## Технологии
+
+- PHP 8.5 + MySQL 8.4, nginx — без единой внешней библиотеки и без сборки фронтенда.
+- Фронтенд: чистые HTML/CSS/JS, стили сняты с макета.
+
+## Структура
+
+```
+app/            PHP: конфиг, БД, авторизация, интеграция с AUMA, API
+  auma.php      разбор форм AUMA (характеристики и схемы)
+  api.php       JSON API
+  views/        шаблоны страниц
+public/         веб-корень (index.php, assets, uploads)
+sql/schema.sql  схема базы
+deploy/         установка и настройка сервера
+```
+
+## Установка на чистый сервер
+
+```bash
+# 1. окружение
+bash deploy/install-server.sh
+
+# 2. залить файлы проекта в /var/www/auma
+
+# 3. настроить сайт
+bash deploy/setup-site.sh
+```
+
+Пароль базы генерируется автоматически и лежит в `/root/.auma-db-pass`;
+он же прописывается в `app/config.php`.
+
+## Настройка
+
+`app/config.php` (в репозиторий не попадает, образец — `app/config.sample.php`):
+
+- `db.*` — доступ к MySQL;
+- `app.upload_dir` — куда складывать скачанные документы;
+- `mail.enabled` — **отправка на почту пока выключена**. Кнопка есть, письмо
+  пишется в таблицу `email_log` со статусом `stub`. Когда появятся настройки
+  SMTP, достаточно заполнить `mail.*` и включить `enabled`.
+
+## Как устроена интеграция с AUMA
+
+Обе функции AUMA — обычные ASP.NET-формы, разобранные по шагам.
+
+**Характеристики**
+
+1. `GET www4.auma.com/webservices/TechnicalDataSheetPublic/request.aspx?lang=en`
+2. `POST TypeDdl=Order, numberTB=<заказ>, LanguageDdl=E, FormatDdl=htm|pdf`
+3. в ответе ссылка `.../AumaWebService/Data/TDS<заказ>_en-<метка>.<ext>`
+4. скачивание
+
+**Схема подключения**
+
+1. `GET www4.auma.com/Schaltplan/AuftragsForm.aspx?Lang=en`
+2. `POST OrderOrSerialNo=<заказ>, Button1=execute` — в ответе таблица изделия
+   с артикулом
+3. `POST RequestBttn=Request wiring diagram` — редирект
+   `Redirector.aspx?goto=temp%2fTPA....pdf`
+4. скачивание PDF
+
+> **Важно.** AUMA отдаёт `HTTP 500`, если запрос не похож на браузерный.
+> Заголовки `Accept`, `Accept-Language`, `Upgrade-Insecure-Requests` и
+> `Sec-Fetch-*` в `app/auma.php` обязательны — без них формы «не работают».
