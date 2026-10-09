@@ -77,8 +77,11 @@ function esc(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function fileIcon(ext) {
-    return '<span class="file-icon"><svg viewBox="0 0 24 24" width="15" height="15">'
+/** Иконка файла. У схем подключения она зелёная, у остальных синяя. */
+function fileIcon(doc) {
+    const isScheme = doc && doc.doc_type === 'scheme';
+    return '<span class="file-icon' + (isScheme ? ' scheme' : '') + '">'
+        + '<svg viewBox="0 0 24 24" width="15" height="15">'
         + '<path d="M14 3v5h5M7 3h7l5 5v13H7z" fill="none" stroke="currentColor" '
         + 'stroke-width="1.7" stroke-linejoin="round"/></svg></span>';
 }
@@ -149,7 +152,7 @@ function renderDocs() {
         return `<tr data-id="${d.id}">
             <td>
                 <div class="file-cell">
-                    ${fileIcon(d.format)}
+                    ${fileIcon(d)}
                     <div style="min-width:0">
                         <div class="file-name" title="${esc(d.filename)}">${esc(d.filename)}</div>
                         <div class="file-kind">${esc(d.doc_type_title)}${d.folder_code ? ' · ' + esc(d.folder_code) : ''}</div>

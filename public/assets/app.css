@@ -280,6 +280,8 @@ button { font: inherit; cursor: pointer; }
     width: 30px; height: 30px; border-radius: 8px; background: var(--blue-soft);
     display: grid; place-items: center; color: var(--blue); flex: 0 0 auto;
 }
+/* Схемы подключения помечаем зелёным, чтобы отличать от характеристик */
+.file-icon.scheme { background: #e7f8ef; color: #12b76a; }
 .file-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .file-kind { font-size: 11px; color: var(--ink-3); }
 
