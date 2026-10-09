@@ -26,6 +26,10 @@
 
 * { box-sizing: border-box; }
 
+/* Атрибут hidden должен побеждать любые display-правила ниже:
+   иначе модальное окно и меню строки видны постоянно. */
+[hidden] { display: none !important; }
+
 html, body {
     margin: 0;
     padding: 0;
