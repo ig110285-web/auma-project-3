@@ -499,11 +499,8 @@ function init() {
         inp.addEventListener('input', onFilterInput);
         inp.addEventListener('change', onFilterInput);
     });
-    $('#clearFilters').addEventListener('click', () => {
-        $$('.f-input').forEach(i => { i.value = ''; });
-        collectFilters();
-        loadDocs();
-    });
+    // Сброс фильтров — кнопкой на панели над таблицей.
+    // Раньше был ещё крестик в колонке Action, его убрали.
     $('#resetFilters').addEventListener('click', () => {
         $$('.f-input').forEach(i => { i.value = ''; });
         collectFilters();

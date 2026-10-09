@@ -268,12 +268,7 @@ button { font: inherit; cursor: pointer; }
     background: #fff;
 }
 .f-input:focus { border-color: var(--blue); }
-.f-dates, .f-sizes { display: flex; gap: 4px; }
-.f-sizes .f-input { width: 50%; }
-.f-clear {
-    border: 1px solid var(--line); background: #fff; border-radius: 7px;
-    width: 28px; height: 28px; color: var(--ink-3); line-height: 1;
-}
+.f-dates { display: flex; gap: 4px; }
 
 .file-cell { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .file-icon {

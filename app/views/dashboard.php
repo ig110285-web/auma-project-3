@@ -175,9 +175,9 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                 <div class="block-head">
                     <h2>Документы</h2>
                     <div class="view-tools">
-                        <button class="tool" id="resetFilters" type="button">
+                        <button class="tool" id="resetFilters" type="button" title="Сбросить все фильтры">
                             <svg viewBox="0 0 24 24" width="15" height="15"><path d="M3 5h18l-7 8v6l-4-2v-4L3 5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-                            Filter
+                            Сбросить
                         </button>
                         <button class="tool" id="toggleView" type="button">
                             <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -214,7 +214,7 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                                 <th><input class="f-input" data-filter="order" placeholder="фильтр"></th>
                                 <th></th>
                                 <th><input class="f-input" data-filter="owner" placeholder="фильтр"></th>
-                                <th><button class="f-clear" id="clearFilters" type="button" title="Сбросить фильтры">×</button></th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody id="docsBody">
