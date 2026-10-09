@@ -247,16 +247,107 @@ function auma_text(string $html): string
     return trim(preg_replace('/\s+/u', ' ', $t) ?? $t);
 }
 
+/** Привести артикул к единому виду: «BSA 10.2» -> «BSA-10.2». */
+function auma_normalize_article(string $raw): string
+{
+    $v = trim(preg_replace('/\s+/u', ' ', $raw) ?? $raw);
+    $v = trim($v, " \t\n\r\0\x0B.,;:");
+    // пробел между буквами и цифрами заменяем на дефис
+    $v = preg_replace('/^([A-Za-z][A-Za-z0-9]*)\s+(\d)/u', '$1-$2', $v) ?? $v;
+    return mb_strtoupper($v);
+}
+
+/** Ячейки одной строки таблицы. */
+function auma_row_cells(string $rowHtml): array
+{
+    // пустые ячейки-распорки вида <td width="20px" /> убираем,
+    // иначе они ломают разбор
+    $rowHtml = preg_replace('#<t[dh][^>]*/>#i', '', $rowHtml) ?? $rowHtml;
+    if (!preg_match_all('#<t[dh][^>]*>(.*?)</t[dh]>#is', $rowHtml, $m)) {
+        return [];
+    }
+    $out = [];
+    foreach ($m[1] as $cell) {
+        $v = html_entity_decode(strip_tags($cell), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $out[] = trim(preg_replace('/\s+/u', ' ', $v) ?? $v);
+    }
+    return $out;
+}
+
+/** Похоже ли значение на артикул: буквы и цифры, без пробелов внутри. */
+function auma_looks_like_article(string $value): bool
+{
+    return $value !== ''
+        && mb_strlen($value) <= 40
+        && preg_match('/\d/', $value) === 1
+        && preg_match('#^[A-Za-z0-9][A-Za-z0-9._/-]*$#', $value) === 1;
+}
+
+/** Все строки таблиц документа. */
+function auma_rows(string $html): array
+{
+    return preg_match_all('#<tr[^>]*>(.*?)</tr>#is', $html, $m) ? $m[1] : [];
+}
+
 /**
- * Артикул изделия. В разметке AUMA он разбит тегами и пробелами:
- * "SQEX 07.2", "SQEX-07.2", "SQEX07.2" — приводим к виду SQEX-07.2.
+ * Артикул изделия из документа AUMA.
+ *
+ * В паспорте заказа он лежит в той же строке, что и подпись «Article»:
+ *   <tr><td>Article</td><td width="20px" /><td bgcolor="#ffff99">BSA-10.2</td></tr>
+ *
+ * В форме схем это таблица с шапкой «Position | Article no. | Article name |
+ * Amount», поэтому там значение берётся из столбца с заголовком «Article no.».
+ *
+ * Артикул может быть любым (SQEX-07.2, BSA-10.2, AM-01.1), привязки
+ * к конкретным сериям нет.
  */
 function auma_extract_article(string $html): string
 {
-    $text = auma_text($html);
-    if (preg_match('/\b(S[QA]EX?)\s*[-–—]?\s*(\d+(?:[.,]\d+)?)\b/ui', $text, $m)) {
-        return strtoupper($m[1]) . '-' . str_replace(',', '.', $m[2]);
+    $rows = auma_rows($html);
+
+    // 1. Значение в той же строке, где стоит подпись «Article».
+    foreach ($rows as $rowHtml) {
+        $cells = auma_row_cells($rowHtml);
+        foreach ($cells as $i => $cell) {
+            if (!preg_match('/^Article$/iu', $cell)) {
+                continue;
+            }
+            foreach (array_slice($cells, $i + 1) as $value) {
+                if (auma_looks_like_article($value)) {
+                    return auma_normalize_article($value);
+                }
+            }
+        }
     }
+
+    // 2. Столбец «Article no.»: берём значение из той же колонки ниже шапки.
+    foreach ($rows as $rowHtml) {
+        $cells = auma_row_cells($rowHtml);
+        foreach ($cells as $i => $cell) {
+            if (!preg_match('/^Article\s*no\.?$/iu', $cell)) {
+                continue;
+            }
+            foreach ($rows as $dataRow) {
+                $data = auma_row_cells($dataRow);
+                if (isset($data[$i]) && auma_looks_like_article($data[$i])) {
+                    return auma_normalize_article($data[$i]);
+                }
+            }
+        }
+    }
+
+    // 3. По плоскому тексту: «Article BSA-10.2 Customer article BSA-10.2»
+    $text = auma_text($html);
+    if (preg_match('/(?<!Customer )Article\s+([A-Za-z0-9][\w.\/-]{1,30})/u', $text, $m)
+        && auma_looks_like_article($m[1])) {
+        return auma_normalize_article($m[1]);
+    }
+
+    // 4. Запасной вариант — привычные серии
+    if (preg_match('/\b(S[QA]EX?)\s*[-–—]?\s*(\d+(?:[.,]\d+)?)\b/ui', $text, $m)) {
+        return mb_strtoupper($m[1]) . '-' . str_replace(',', '.', $m[2]);
+    }
+
     return '';
 }
 
