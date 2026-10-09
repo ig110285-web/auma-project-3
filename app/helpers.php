@@ -64,6 +64,19 @@ function base_path(string $path = '/'): string
     return rtrim($base, '/') . '/' . ltrim($path, '/');
 }
 
+/**
+ * Куда вернуть пользователя после входа. Принимаем только собственные
+ * пути — иначе получится открытый редирект на чужой сайт.
+ */
+function safe_next(string $next): string
+{
+    $next = trim($next);
+    if ($next === '' || !str_starts_with($next, '/') || str_starts_with($next, '//')) {
+        return base_path('/');
+    }
+    return $next;
+}
+
 function upload_dir(): string
 {
     $dir = (string) config('app.upload_dir');

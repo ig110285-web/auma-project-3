@@ -26,14 +26,16 @@ auth_boot();
 
 switch ($path) {
     case '/login':
+        // next нужен, когда человека привели сюда по ссылке на документ
+        $next = (string) ($_GET['next'] ?? $_POST['next'] ?? '');
         if (auth_user()) {
-            header('Location: ' . base_path('/'));
+            header('Location: ' . safe_next($next));
             exit;
         }
         if ($method === 'POST') {
             $user = auth_attempt((string) ($_POST['email'] ?? ''), (string) ($_POST['password'] ?? ''));
             if ($user) {
-                header('Location: ' . base_path('/'));
+                header('Location: ' . safe_next($next));
                 exit;
             }
             $error = 'Неверный email или пароль';
@@ -42,8 +44,9 @@ switch ($path) {
         break;
 
     case '/register':
+        $next = (string) ($_GET['next'] ?? $_POST['next'] ?? '');
         if (auth_user()) {
-            header('Location: ' . base_path('/'));
+            header('Location: ' . safe_next($next));
             exit;
         }
         if ($method === 'POST') {
@@ -53,7 +56,7 @@ switch ($path) {
                 (string) ($_POST['name'] ?? '')
             );
             if ($res['ok']) {
-                header('Location: ' . base_path('/'));
+                header('Location: ' . safe_next($next));
                 exit;
             }
             $error = $res['error'] ?? 'Не удалось зарегистрироваться';

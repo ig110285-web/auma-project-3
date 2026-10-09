@@ -5,12 +5,20 @@ declare(strict_types=1);
  * Регистрация и вход по email + пароль. Сессия — стандартная PHP.
  */
 
+/** Срок жизни сессии — неделя. */
+const SESSION_LIFETIME = 604800;
+
 function auth_boot(): void
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
+    // PHP по умолчанию держит сессию 1440 секунд (24 минуты), а systemd-таймер
+    // phpsessionclean по этому же значению удаляет файлы сессий. Из-за этого
+    // человек вылетал из аккаунта после короткого простоя.
+    @ini_set('session.gc_maxlifetime', (string) SESSION_LIFETIME);
     session_set_cookie_params([
+        'lifetime' => SESSION_LIFETIME,
         'httponly' => true,
         'samesite' => 'Lax',
         'path'     => '/',

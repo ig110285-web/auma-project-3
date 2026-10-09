@@ -405,7 +405,14 @@ function api_fetch_scheme(): void
  */
 function api_download(int $id): void
 {
-    api_require_user();
+    if (!auth_user()) {
+        // Ссылку на документ открыли без входа. Сухой JSON выглядит как
+        // «страница не открывается», поэтому ведём на форму входа
+        // и после неё возвращаем человека обратно к файлу.
+        $next = (string) ($_SERVER['REQUEST_URI'] ?? '/');
+        header('Location: ' . base_path('/login') . '?next=' . rawurlencode($next));
+        exit;
+    }
     $row = db_one('SELECT * FROM documents WHERE id = ?', [$id]);
     if (!$row) {
         json_error('Документ не найден', 404);

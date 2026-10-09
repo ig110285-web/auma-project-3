@@ -31,6 +31,7 @@ $appName = (string) config('app.name', 'AUMA Documentation');
     <?php endif; ?>
 
     <form method="post" class="auth-form">
+        <input type="hidden" name="next" value="<?= e($next ?? '') ?>">
         <?php if ($isRegister): ?>
         <label class="field">
             <span class="field-label">Имя</span>
@@ -58,10 +59,11 @@ $appName = (string) config('app.name', 'AUMA Documentation');
     </form>
 
     <div class="auth-switch">
+        <?php $nextQ = ($next ?? '') !== '' ? '?next=' . rawurlencode((string) $next) : ''; ?>
         <?php if ($isRegister): ?>
-            Уже есть аккаунт? <a href="<?= e(base_path('/login')) ?>">Войти</a>
+            Уже есть аккаунт? <a href="<?= e(base_path('/login') . $nextQ) ?>">Войти</a>
         <?php else: ?>
-            Нет аккаунта? <a href="<?= e(base_path('/register')) ?>">Зарегистрироваться</a>
+            Нет аккаунта? <a href="<?= e(base_path('/register') . $nextQ) ?>">Зарегистрироваться</a>
         <?php endif; ?>
     </div>
 </div>
