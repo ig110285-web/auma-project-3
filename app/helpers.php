@@ -73,6 +73,18 @@ function upload_dir(): string
     return rtrim($dir, '/');
 }
 
+/**
+ * Ссылка на статику с версией по времени изменения файла.
+ * Без этого браузер держит старые app.css и app.js в кэше,
+ * и правки не доходят до пользователя.
+ */
+function asset(string $path): string
+{
+    $file = BASE_DIR . '/public/' . ltrim($path, '/');
+    $ver = is_file($file) ? filemtime($file) : null;
+    return base_path($path) . ($ver ? '?v=' . $ver : '');
+}
+
 /** Безопасное имя файла для хранения на диске. */
 function safe_stored_name(string $original): string
 {

@@ -211,14 +211,6 @@ function api_documents(): void
         $where[] = 'd.order_no LIKE ?';
         $params[] = '%' . $order . '%';
     }
-    if (($_GET['size_min'] ?? '') !== '') {
-        $where[] = 'd.size >= ?';
-        $params[] = (int) $_GET['size_min'];
-    }
-    if (($_GET['size_max'] ?? '') !== '') {
-        $where[] = 'd.size <= ?';
-        $params[] = (int) $_GET['size_max'];
-    }
     $owner = trim((string) ($_GET['owner'] ?? ''));
     if ($owner !== '') {
         $where[] = '(u.email LIKE ? OR u.name LIKE ?)';

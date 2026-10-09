@@ -11,7 +11,7 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <title><?= e($appName) ?></title>
-<link rel="stylesheet" href="<?= e(base_path('/assets/app.css')) ?>">
+<link rel="stylesheet" href="<?= e(asset('/assets/app.css')) ?>">
 </head>
 <body>
 
@@ -212,12 +212,7 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                                 </th>
                                 <th><input class="f-input" data-filter="article" placeholder="фильтр"></th>
                                 <th><input class="f-input" data-filter="order" placeholder="фильтр"></th>
-                                <th>
-                                    <div class="f-sizes">
-                                        <input class="f-input" type="number" data-filter="size_min" placeholder="от" title="байт">
-                                        <input class="f-input" type="number" data-filter="size_max" placeholder="до" title="байт">
-                                    </div>
-                                </th>
+                                <th></th>
                                 <th><input class="f-input" data-filter="owner" placeholder="фильтр"></th>
                                 <th><button class="f-clear" id="clearFilters" type="button" title="Сбросить фильтры">×</button></th>
                             </tr>
@@ -258,6 +253,19 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
     </div>
 </div>
 
+<!-- Подтверждение удаления: своё окно вместо window.confirm,
+     которое браузер может блокировать после нескольких показов -->
+<div class="modal-backdrop" id="confirmModal" hidden>
+    <div class="modal">
+        <h3 id="confirmTitle">Удалить файл?</h3>
+        <p class="modal-sub" id="confirmText">—</p>
+        <div class="modal-actions">
+            <button class="btn btn-ghost" type="button" id="confirmCancel">Отмена</button>
+            <button class="btn btn-danger" type="button" id="confirmOk">Удалить</button>
+        </div>
+    </div>
+</div>
+
 <!-- Универсальное уведомление -->
 <div class="toasts" id="toasts"></div>
 
@@ -267,6 +275,6 @@ window.AUMA = {
     user: <?= json_encode(['email' => $u['email'], 'name' => $u['name']], JSON_UNESCAPED_UNICODE) ?>
 };
 </script>
-<script src="<?= e(base_path('/assets/app.js')) ?>"></script>
+<script src="<?= e(asset('/assets/app.js')) ?>"></script>
 </body>
 </html>

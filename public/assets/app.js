@@ -272,6 +272,8 @@ async function toggleStar(id) {
 
 function openRowMenu(id, anchor) {
     const menu = $('#rowMenu');
+    // id храним прямо на элементе меню: state может обнулиться от постороннего события
+    menu.dataset.docId = String(id);
     state.menuDocId = id;
     menu.hidden = false;
     const r = anchor.getBoundingClientRect();
@@ -280,7 +282,7 @@ function openRowMenu(id, anchor) {
     let left = r.right - w;
     let top = r.bottom + 6;
     if (left < 8) left = 8;
-    if (top + h > window.innerHeight - 8) top = r.top - h - 6;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
     menu.style.left = left + 'px';
     menu.style.top = top + 'px';
 }
@@ -290,10 +292,42 @@ function closeRowMenu() {
     state.menuDocId = null;
 }
 
+/** Своё окно подтверждения вместо window.confirm. */
+function confirmDialog(title, text, okLabel) {
+    return new Promise(resolve => {
+        const modal = $('#confirmModal');
+        $('#confirmTitle').textContent = title;
+        $('#confirmText').textContent = text;
+        $('#confirmOk').textContent = okLabel || 'Удалить';
+        modal.hidden = false;
+        $('#confirmOk').focus();
+
+        const done = val => {
+            modal.hidden = true;
+            $('#confirmOk').removeEventListener('click', onOk);
+            $('#confirmCancel').removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onKey);
+            resolve(val);
+        };
+        const onOk = () => done(true);
+        const onCancel = () => done(false);
+        const onBackdrop = e => { if (e.target === modal) done(false); };
+        const onKey = e => { if (e.key === 'Escape') done(false); };
+
+        $('#confirmOk').addEventListener('click', onOk);
+        $('#confirmCancel').addEventListener('click', onCancel);
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onKey);
+    });
+}
+
 async function deleteDoc(id) {
     const doc = state.docs.find(d => d.id === id);
     const name = doc ? doc.filename : ('#' + id);
-    if (!window.confirm('Удалить файл «' + name + '»? Действие необратимо.')) return;
+    const ok = await confirmDialog('Удалить файл?',
+        '«' + name + '» будет удалён с сайта и с диска. Отменить это нельзя.', 'Удалить');
+    if (!ok) return;
     try {
         await api('/api/documents/' + id, { method: 'DELETE' });
         toast('Файл удалён: ' + name, 'ok');
@@ -462,10 +496,11 @@ function init() {
     $('#rowMenu').addEventListener('click', e => {
         const b = e.target.closest('button[data-act]');
         if (!b) return;
-        const id = state.menuDocId;
+        e.preventDefault();
+        const id = parseInt($('#rowMenu').dataset.docId || '', 10);
         const act = b.dataset.act;
         closeRowMenu();
-        if (id == null) return;
+        if (!Number.isFinite(id)) return;
         if (act === 'delete') deleteDoc(id);
         if (act === 'email') openMailModal(id);
     });
@@ -475,7 +510,6 @@ function init() {
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') { closeRowMenu(); $('#mailModal').hidden = true; }
     });
-    window.addEventListener('scroll', closeRowMenu, true);
 
     // Модальное окно
     $('#mailCancel').addEventListener('click', () => { $('#mailModal').hidden = true; });
