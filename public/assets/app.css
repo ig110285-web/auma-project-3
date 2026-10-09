@@ -260,7 +260,7 @@ button { font: inherit; cursor: pointer; }
 .col-order { width: 12%; }
 .col-size { width: 11%; }
 .col-owner { width: 16%; }
-.col-action { width: 90px; text-align: right; }
+.col-action { width: 132px; text-align: right; }
 
 .f-input {
     width: 100%; border: 1px solid var(--line); border-radius: 7px;
@@ -282,7 +282,11 @@ button { font: inherit; cursor: pointer; }
 }
 /* Схемы подключения помечаем зелёным, чтобы отличать от характеристик */
 .file-icon.scheme { background: #e7f8ef; color: #12b76a; }
-.file-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-name {
+    display: block; font-weight: 500; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+a.file-name:hover { color: var(--blue); text-decoration: underline; }
 .file-kind { font-size: 11px; color: var(--ink-3); }
 
 .owner-cell { display: flex; align-items: center; gap: 8px; }

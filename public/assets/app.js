@@ -154,7 +154,8 @@ function renderDocs() {
                 <div class="file-cell">
                     ${fileIcon(d)}
                     <div style="min-width:0">
-                        <div class="file-name" title="${esc(d.filename)}">${esc(d.filename)}</div>
+                        <a class="file-name" href="${esc(d.download_url)}?mode=view" target="_blank"
+                           rel="noopener" title="Открыть для просмотра">${esc(d.filename)}</a>
                         <div class="file-kind">${esc(d.doc_type_title)}${d.folder_code ? ' · ' + esc(d.folder_code) : ''}</div>
                     </div>
                 </div>
@@ -174,9 +175,13 @@ function renderDocs() {
                     <button class="act star${d.favorite ? ' on' : ''}" data-act="star" data-id="${d.id}" title="В избранное">
                         <svg viewBox="0 0 24 24" width="17" height="17"><path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8L12 4Z" fill="${d.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
                     </button>
-                    <a class="act dl" href="${esc(d.download_url)}" title="Скачать">
-                        <svg viewBox="0 0 24 24" width="17" height="17"><path d="M12 4v10m0 0-4-4m4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <a class="act view" href="${esc(d.download_url)}?mode=view" target="_blank"
+                       rel="noopener" title="Посмотреть без скачивания">
+                        <svg viewBox="0 0 24 24" width="17" height="17"><path d="M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
                     </a>
+                    <button class="act dl" data-act="download" data-id="${d.id}" title="Скачать">
+                        <svg viewBox="0 0 24 24" width="17" height="17"><path d="M12 4v10m0 0-4-4m4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
                     <button class="act kebab" data-act="menu" data-id="${d.id}" title="Действия">
                         <svg viewBox="0 0 24 24" width="17" height="17"><circle cx="12" cy="5" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/></svg>
                     </button>
@@ -323,6 +328,41 @@ function confirmDialog(title, text, okLabel) {
         modal.addEventListener('click', onBackdrop);
         document.addEventListener('keydown', onKey);
     });
+}
+
+/**
+ * Скачивание через fetch, а не обычной ссылкой: так видно,
+ * если сервер ответил ошибкой, вместо молчаливой неудачи.
+ */
+async function downloadDoc(id) {
+    const doc = state.docs.find(d => d.id === id);
+    const name = doc ? doc.filename : 'file';
+    toast('Скачиваю ' + name + '…');
+    try {
+        const res = await fetch(url('/api/documents/' + id + '/download'), {
+            credentials: 'same-origin'
+        });
+        if (!res.ok) {
+            let msg = 'Не удалось скачать файл (ошибка ' + res.status + ')';
+            try {
+                const j = await res.json();
+                if (j && j.error) msg = j.error;
+            } catch (e) { /* ответ не JSON */ }
+            throw new Error(msg);
+        }
+        const blob = await res.blob();
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(href), 15000);
+        toast('Файл скачан: ' + name, 'ok');
+    } catch (e) {
+        toast(e.message, 'error', 8000);
+    }
 }
 
 async function deleteDoc(id) {
@@ -493,6 +533,7 @@ function init() {
         const id = parseInt(btn.dataset.id, 10);
         if (btn.dataset.act === 'star') { e.preventDefault(); toggleStar(id); }
         if (btn.dataset.act === 'menu') { e.preventDefault(); openRowMenu(id, btn); }
+        if (btn.dataset.act === 'download') { e.preventDefault(); downloadDoc(id); }
     });
 
     // Меню строки

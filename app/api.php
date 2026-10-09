@@ -398,6 +398,11 @@ function api_fetch_scheme(): void
 
 /* --- скачивание ------------------------------------------------------ */
 
+/**
+ * Отдача файла.
+ *   ?mode=view  — открыть в браузере (просмотр без скачивания)
+ *   без mode    — скачать
+ */
 function api_download(int $id): void
 {
     api_require_user();
@@ -409,10 +414,30 @@ function api_download(int $id): void
     if (!is_file($path)) {
         json_error('Файл отсутствует в хранилище', 404);
     }
-    header('Content-Type: ' . ($row['mime'] ?: 'application/octet-stream'));
+
+    $view = (($_GET['mode'] ?? '') === 'view');
+    $name = (string) $row['filename'];
+    $mime = (string) ($row['mime'] ?: 'application/octet-stream');
+
+    // часть браузеров понимает только простой filename=, поэтому отдаём оба
+    $ascii = preg_replace('/[^\x20-\x7E]/', '_', $name) ?: 'file';
+
+    header('Content-Type: ' . $mime);
     header('Content-Length: ' . filesize($path));
-    header("Content-Disposition: attachment; filename*=UTF-8''" . rawurlencode((string) $row['filename']));
+    header(sprintf(
+        "Content-Disposition: %s; filename=\"%s\"; filename*=UTF-8''%s",
+        $view ? 'inline' : 'attachment',
+        addcslashes($ascii, '"\\'),
+        rawurlencode($name)
+    ));
     header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: private, max-age=0, must-revalidate');
+
+    if ($view && str_starts_with($mime, 'text/html')) {
+        // Документ пришёл с чужого сайта: показываем в песочнице,
+        // чтобы его скрипты не могли ничего сделать от имени нашего домена.
+        header('Content-Security-Policy: sandbox');
+    }
     readfile($path);
     exit;
 }
