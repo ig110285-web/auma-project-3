@@ -426,25 +426,28 @@ function api_download(int $id): void
     $name = (string) $row['filename'];
     $mime = (string) ($row['mime'] ?: 'application/octet-stream');
 
-    // часть браузеров понимает только простой filename=, поэтому отдаём оба
-    $ascii = preg_replace('/[^\x20-\x7E]/', '_', $name) ?: 'file';
-
     header('Content-Type: ' . $mime);
     header('Content-Length: ' . filesize($path));
-    header(sprintf(
-        "Content-Disposition: %s; filename=\"%s\"; filename*=UTF-8''%s",
-        $view ? 'inline' : 'attachment',
-        addcslashes($ascii, '"\\'),
-        rawurlencode($name)
-    ));
     header('X-Content-Type-Options: nosniff');
     header('Cache-Control: private, max-age=0, must-revalidate');
 
-    if ($view && str_starts_with($mime, 'text/html')) {
-        // Документ пришёл с чужого сайта: показываем в песочнице,
-        // чтобы его скрипты не могли ничего сделать от имени нашего домена.
-        header('Content-Security-Policy: sandbox');
+    if ($view) {
+        // Для просмотра Content-Disposition не отправляем совсем: некоторые
+        // клиенты (в том числе встроенные браузеры приложений) считают любой
+        // такой заголовок командой «скачать» и вместо документа показывают пустоту.
+        // Скрипты чужого документа при этом запрещаем — документ пришёл
+        // с постороннего сайта.
+        header("Content-Security-Policy: script-src 'none'; object-src 'none'; base-uri 'none'");
+    } else {
+        // часть браузеров понимает только простой filename=, поэтому отдаём оба
+        $ascii = preg_replace('/[^\x20-\x7E]/', '_', $name) ?: 'file';
+        header(sprintf(
+            "Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            addcslashes($ascii, '"\\'),
+            rawurlencode($name)
+        ));
     }
+
     readfile($path);
     exit;
 }
