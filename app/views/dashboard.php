@@ -40,19 +40,28 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                 <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 13h7V4H4v9Zm0 7h7v-5H4v5Zm9 0h7v-9h-7v9Zm0-16v5h7V4h-7Z" fill="currentColor"/></svg>
                 Dashboard
             </a>
-            <a href="#" class="nav-item" data-view="cloud">
-                <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6.5 19a4.5 4.5 0 0 1-.5-8.97A6 6 0 0 1 17.7 9.2 4.4 4.4 0 0 1 17.5 19h-11Z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
-                Cloud Storage
-                <svg class="chev" viewBox="0 0 24 24" width="14" height="14"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </a>
-            <a href="#" class="nav-item" data-folder="SA">SA</a>
-            <a href="#" class="nav-item" data-folder="SAEx">SAEx</a>
-            <a href="#" class="nav-item" data-folder="SQ">SQ</a>
-            <a href="#" class="nav-item" data-folder="SQEx">SQEx</a>
-            <a href="#" class="nav-item" data-view="recent">
-                <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-                Recent
-            </a>
+            <?php
+            // Группы и папки берутся из app/catalog.php — добавление новой
+            // группы не требует правок в этом шаблоне.
+            $groupIcons = [
+                'drive'    => '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5.5A3.5 3.5 0 1 1 12 15.5 3.5 3.5 0 0 1 12 8.5Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+                'controls' => '<rect x="4" y="5" width="16" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 9h8M8 12.5h5M8 16h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+            ];
+            ?>
+            <?php foreach (catalog() as $group): ?>
+            <div class="nav-group">
+                <button type="button" class="nav-item nav-toggle" data-group="<?= e($group['code']) ?>">
+                    <svg viewBox="0 0 24 24" width="18" height="18"><?= $groupIcons[$group['code']] ?? $groupIcons['drive'] ?></svg>
+                    <?= e($group['title']) ?>
+                    <svg class="chev" viewBox="0 0 24 24" width="14" height="14"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </button>
+                <div class="nav-sub">
+                    <?php foreach ($group['folders'] as $folder): ?>
+                        <a href="#" class="nav-item nav-sub-item" data-folder="<?= e($folder['code']) ?>"><?= e($folder['title']) ?></a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
             <a href="#" class="nav-item" data-view="favorite">
                 <svg viewBox="0 0 24 24" width="18" height="18"><path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8L12 4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
                 Favourite

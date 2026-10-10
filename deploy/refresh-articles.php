@@ -56,20 +56,27 @@ foreach ($rows as $row) {
         continue;
     }
 
-    if ($article === (string) $row['article']) {
+    // папку пересчитываем всегда: дерево папок могло измениться,
+    // даже если сам артикул остался прежним
+    $folder = folder_from_article($article);
+    $articleChanged = $article !== (string) $row['article'];
+    $folderChanged = $folder !== (string) $row['folder_code'];
+
+    if (!$articleChanged && !$folderChanged) {
         echo "  id={$id} {$row['filename']}: без изменений ({$article})\n";
         continue;
     }
 
-    $folder = folder_from_article($article);
     db_exec(
         'UPDATE documents SET article = ?, folder_code = ?, updated_at = ? WHERE id = ?',
         [$article, $folder, now(), $id]
     );
 
     $was = (string) $row['article'] === '' ? '—' : (string) $row['article'];
-    echo "  id={$id} {$row['filename']}: {$was} -> {$article}"
-        . ($folder !== '' ? " (папка {$folder})" : '') . "\n";
+    $folderNote = $folder !== ''
+        ? " (папка {$folder})"
+        : ((string) $row['folder_code'] !== '' ? ' (папка снята)' : '');
+    echo "  id={$id} {$row['filename']}: {$was} -> {$article}{$folderNote}\n";
     $fixed++;
 }
 

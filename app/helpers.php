@@ -65,6 +65,41 @@ function base_path(string $path = '/'): string
 }
 
 /**
+ * Дерево групп и папок из app/catalog.php.
+ */
+function catalog(): array
+{
+    static $tree = null;
+    if ($tree === null) {
+        $tree = require BASE_DIR . '/app/catalog.php';
+    }
+    return $tree;
+}
+
+/** Все коды папок: SA, SAEx, SQ, SQEx, AC, ACExC, AM, AMExC. */
+function catalog_folder_codes(): array
+{
+    $codes = [];
+    foreach (catalog() as $group) {
+        foreach ($group['folders'] as $folder) {
+            $codes[] = (string) $folder['code'];
+        }
+    }
+    return $codes;
+}
+
+/** Папки группы по её коду. */
+function catalog_group_folders(string $groupCode): array
+{
+    foreach (catalog() as $group) {
+        if ($group['code'] === $groupCode) {
+            return $group['folders'];
+        }
+    }
+    return [];
+}
+
+/**
  * Убрать из чужого HTML всё исполняемое.
  *
  * Документы приходят с сайта AUMA и встраиваются в нашу страницу. Атрибут

@@ -67,21 +67,26 @@ function now(): string
 
 /**
  * Определить папку по артикулу.
- * SQEX-07.2 -> SQEx, SAEX-10.2 -> SAEx, SQ... -> SQ, SA... -> SA
+ *
+ * Папки берутся из дерева в app/catalog.php, поэтому добавление новой
+ * группы не требует правок здесь. Сначала проверяются длинные обозначения:
+ * иначе ACExC попал бы в AC, а SAEx — в SA.
  */
 function folder_from_article(string $article): string
 {
     $a = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $article) ?? '');
-    foreach (['SAEX' => 'SAEx', 'SQEX' => 'SQEx'] as $prefix => $code) {
-        if (str_starts_with($a, $prefix)) {
+    if ($a === '') {
+        return '';
+    }
+
+    $codes = catalog_folder_codes();
+    usort($codes, static fn(string $x, string $y): int => strlen($y) <=> strlen($x));
+
+    foreach ($codes as $code) {
+        $prefix = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $code) ?? '');
+        if ($prefix !== '' && str_starts_with($a, $prefix)) {
             return $code;
         }
-    }
-    if (str_starts_with($a, 'SA')) {
-        return 'SA';
-    }
-    if (str_starts_with($a, 'SQ')) {
-        return 'SQ';
     }
     return '';
 }

@@ -8,9 +8,11 @@ const BASE = (window.AUMA && window.AUMA.base) || '/';
 const state = {
     view: 'dashboard',
     folder: '',
+    group: '',
     filters: {},
     docs: [],
     folders: [],
+    groups: [],
     order: '',
     fmt: 'pdf',
     menuDocId: null,
@@ -95,9 +97,20 @@ function fileIcon(doc) {
 
 async function bootstrap() {
     const data = await api('/api/bootstrap');
-    state.folders = data.folders || [];
-    renderFolders();
+    applyGroups(data.groups);
     renderStats(data.stats);
+}
+
+function applyGroups(groups) {
+    state.groups = groups || [];
+    // для сетки папок на дашборде нужен плоский список
+    state.folders = state.groups.flatMap(g => g.folders);
+    renderFolders();
+}
+
+function groupTitle(code) {
+    const g = state.groups.find(x => x.code === code);
+    return g ? g.title : code;
 }
 
 function renderStats(stats) {
@@ -124,6 +137,7 @@ function renderFolders() {
 function currentParams() {
     const p = Object.assign({}, state.filters);
     if (state.folder) p.folder = state.folder;
+    if (state.group) p.group = state.group;
     if (state.view === 'favorite') p.favorite = '1';
     if (state.view === 'trash') p.deleted = '1';
     return p;
@@ -138,6 +152,7 @@ async function loadDocs() {
         renderDocs();
         $('#docsCount').textContent = 'Всего: ' + data.total
             + (state.folder ? ' · папка ' + state.folder : '')
+            + (state.group ? ' · группа ' + groupTitle(state.group) : '')
             + (state.view === 'trash' ? ' · корзина' : '');
     } catch (e) {
         body.innerHTML = '<tr><td colspan="7" class="empty">' + esc(e.message) + '</td></tr>';
@@ -262,8 +277,7 @@ async function fetchScheme() {
 async function refreshAll() {
     await loadDocs();
     const data = await api('/api/bootstrap');
-    state.folders = data.folders || [];
-    renderFolders();
+    applyGroups(data.groups);
     renderStats(data.stats);
 }
 
@@ -417,24 +431,56 @@ async function sendMail() {
 
 /* ---------------- Навигация и фильтры ---------------- */
 
+/** Подсветить текущий раздел меню. */
+function syncNav() {
+    $$('#sideNav .nav-item').forEach(a => a.classList.remove('active'));
+    $$('#sideNav .nav-group').forEach(g => g.classList.remove('active'));
+
+    if (state.folder) {
+        const el = $('#sideNav .nav-sub-item[data-folder="' + state.folder + '"]');
+        if (el) {
+            el.classList.add('active');
+            // раскрываем группу, в которой лежит папка
+            const grp = el.closest('.nav-group');
+            if (grp) grp.classList.remove('collapsed');
+        }
+        return;
+    }
+    if (state.group) {
+        const btn = $('#sideNav .nav-toggle[data-group="' + state.group + '"]');
+        if (btn) btn.closest('.nav-group').classList.add('active');
+        return;
+    }
+    const el = $('#sideNav .nav-item[data-view="' + state.view + '"]');
+    if (el) el.classList.add('active');
+}
+
 function setView(view) {
     state.view = view;
     state.folder = '';
-    $$('#sideNav .nav-item').forEach(a => a.classList.remove('active'));
-    const el = $('#sideNav .nav-item[data-view="' + view + '"]');
-    if (el) el.classList.add('active');
-    if (view === 'settings' || view === 'cloud') {
+    state.group = '';
+    if (view === 'settings') {
         toast('Раздел в разработке');
     }
+    syncNav();
     loadDocs();
 }
 
 function setFolder(code) {
     state.folder = (state.folder === code) ? '' : code;
+    state.group = '';
     state.view = 'dashboard';
-    $$('#sideNav .nav-item').forEach(a => a.classList.remove('active'));
-    const el = $('#sideNav .nav-item[data-folder="' + state.folder + '"]');
-    if (el) el.classList.add('active');
+    syncNav();
+    renderFolders();
+    loadDocs();
+}
+
+/** Выбрать всю группу: «Привод» — это SA, SAEx, SQ, SQEx. */
+function setGroup(code) {
+    state.group = (state.group === code) ? '' : code;
+    state.folder = '';
+    state.view = 'dashboard';
+    syncNav();
     renderFolders();
     loadDocs();
 }
@@ -477,8 +523,25 @@ function init() {
     orderInput.addEventListener('keydown', e => { if (e.key === 'Enter') fetchCharacteristics(); });
     orderInput.addEventListener('input', () => { state.order = orderInput.value.trim(); });
 
-    // Навигация
+    // Навигация: заголовок группы сворачивает список папок,
+    // а при разворачивании показывает документы всей группы
     $('#sideNav').addEventListener('click', e => {
+        const toggle = e.target.closest('.nav-toggle');
+        if (toggle) {
+            e.preventDefault();
+            const grp = toggle.closest('.nav-group');
+            const collapsing = !grp.classList.contains('collapsed');
+            grp.classList.toggle('collapsed', collapsing);
+            if (!collapsing) {
+                state.group = toggle.dataset.group;
+                state.folder = '';
+                state.view = 'dashboard';
+                syncNav();
+                renderFolders();
+                loadDocs();
+            }
+            return;
+        }
         const a = e.target.closest('.nav-item');
         if (!a) return;
         e.preventDefault();
@@ -505,10 +568,9 @@ function init() {
         $$('.f-input').forEach(i => { i.value = ''; });
         collectFilters();
         state.folder = '';
+        state.group = '';
         state.view = 'dashboard';
-        $$('#sideNav .nav-item').forEach(a => a.classList.remove('active'));
-        const el = $('#sideNav .nav-item[data-view="dashboard"]');
-        if (el) el.classList.add('active');
+        syncNav();
         renderFolders();
         loadDocs();
     });

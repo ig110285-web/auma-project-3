@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Папки = серии изделий. Документ попадает в папку по префиксу артикула.
+-- Папки. Состав дерева (группы и папки) описан в app/catalog.php —
+-- таблица оставлена для совместимости и заполняется оттуда при необходимости.
 CREATE TABLE IF NOT EXISTS folders (
     code        VARCHAR(20)  NOT NULL,
     title       VARCHAR(120) NOT NULL,
@@ -79,11 +80,3 @@ CREATE TABLE IF NOT EXISTS events (
     PRIMARY KEY (id),
     KEY idx_events_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT INTO folders (code, title, description, sort_order) VALUES
-    ('SA',   'SA',   'Серия SA',   1),
-    ('SAEx', 'SAEx', 'Серия SAEx', 2),
-    ('SQ',   'SQ',   'Серия SQ',   3),
-    ('SQEx', 'SQEx', 'Серия SQEx', 4)
-ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description),
-                        sort_order = VALUES(sort_order);

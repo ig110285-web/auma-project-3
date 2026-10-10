@@ -86,17 +86,54 @@ function api_me(): void
 /* Справочные данные                                                   */
 /* ------------------------------------------------------------------ */
 
+/** Сколько документов лежит в каждой папке. */
+function folder_counts(): array
+{
+    $counts = [];
+    $rows = db_query(
+        "SELECT folder_code, COUNT(*) AS n FROM documents
+          WHERE deleted = 0 AND folder_code <> '' GROUP BY folder_code"
+    );
+    foreach ($rows as $r) {
+        $counts[(string) $r['folder_code']] = (int) $r['n'];
+    }
+    return $counts;
+}
+
+/** Дерево групп и папок с количеством документов. */
+function groups_payload(): array
+{
+    $counts = folder_counts();
+    $out = [];
+    foreach (catalog() as $group) {
+        $folders = [];
+        $total = 0;
+        foreach ($group['folders'] as $f) {
+            $n = $counts[$f['code']] ?? 0;
+            $total += $n;
+            $folders[] = [
+                'code'        => $f['code'],
+                'title'       => $f['title'],
+                'description' => $f['description'],
+                'docs'        => $n,
+            ];
+        }
+        $out[] = [
+            'code'    => $group['code'],
+            'title'   => $group['title'],
+            'folders' => $folders,
+            'docs'    => $total,
+        ];
+    }
+    return $out;
+}
+
 function api_bootstrap(): void
 {
     $u = api_require_user();
     json_out([
         'user'    => $u,
-        'folders' => db_query(
-            'SELECT f.code, f.title, f.description,
-                    (SELECT COUNT(*) FROM documents d
-                      WHERE d.folder_code = f.code AND d.deleted = 0) AS docs
-               FROM folders f ORDER BY f.sort_order, f.code'
-        ),
+        'groups'  => groups_payload(),
         'doc_types' => [
             ['code' => 'characteristics', 'title' => 'Характеристики'],
             ['code' => 'scheme',          'title' => 'Схема подключения'],
@@ -224,6 +261,19 @@ function api_documents(): void
     if ($folder !== '') {
         $where[] = 'd.folder_code = ?';
         $params[] = $folder;
+    }
+    // выбор всей группы: Привод -> SA, SAEx, SQ, SQEx
+    $group = trim((string) ($_GET['group'] ?? ''));
+    if ($group !== '') {
+        $codes = array_column(catalog_group_folders($group), 'code');
+        if ($codes === []) {
+            $where[] = '1 = 0';
+        } else {
+            $where[] = 'd.folder_code IN (' . implode(',', array_fill(0, count($codes), '?')) . ')';
+            foreach ($codes as $code) {
+                $params[] = $code;
+            }
+        }
     }
     $type = trim((string) ($_GET['type'] ?? ''));
     if ($type !== '') {

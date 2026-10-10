@@ -105,6 +105,20 @@ button { font: inherit; cursor: pointer; }
 .nav-item .chev { margin-left: auto; }
 .nav-item:not(:has(svg)) { padding-left: 38px; }
 
+/* Группы меню: «Привод», «Блоки управления» и папки внутри них */
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-toggle {
+    width: 100%; border: 0; background: transparent; font: inherit;
+    text-align: left; cursor: pointer;
+}
+.nav-toggle .chev { transition: transform .16s ease; }
+.nav-group.collapsed .nav-toggle .chev { transform: rotate(-90deg); }
+.nav-group.active > .nav-toggle { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
+
+.nav-sub { display: flex; flex-direction: column; gap: 2px; }
+.nav-group.collapsed .nav-sub { display: none; }
+.nav-sub-item { padding-left: 38px; font-size: 13px; }
+
 /* ---------------- Плашка хранилища ---------------- */
 
 .storage-card {
