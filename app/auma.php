@@ -373,6 +373,92 @@ function auma_lookup_article(string $order): string
 }
 
 /* ------------------------------------------------------------------ */
+/* Разбор HTML по позициям                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Разложить HTML-документ AUMA по позициям.
+ *
+ * Каждая позиция начинается с <b>Pos.N.0</b>, следом идёт таблица
+ * с её артикулом. Позиция занимает всё до следующей пометки Pos.
+ *
+ * Страниц в HTML нет, поэтому «вырезать» можно только разметку:
+ * дополнительные позиции сохраняются отдельными файлами со своей
+ * обёрткой — заголовком, стилем AUMA и строкой заказа.
+ *
+ * @return array{articles:string[], parts:array<int, array{pos:string, article:string, content:string}>}
+ */
+function htm_split_positions(string $content): array
+{
+    $result = ['articles' => [], 'parts' => []];
+    if ($content === '') {
+        return $result;
+    }
+
+    if (!preg_match_all('#<b>\s*Pos\.\s*(\d+(?:\.\d+)?)\s*</b>#iu', $content, $m, PREG_OFFSET_CAPTURE)) {
+        return $result;
+    }
+
+    $markers = [];
+    foreach ($m[0] as $i => $hit) {
+        $markers[] = ['pos' => (string) $m[1][$i][0], 'start' => (int) $hit[1]];
+    }
+    if (count($markers) < 2) {
+        return $result;
+    }
+
+    // строка заказа и подключение стилей — чтобы вырезанный файл
+    // выглядел так же, как исходный
+    $orderLine = '';
+    if (preg_match('#<span[^>]*>\s*<b>\s*Order:.*?</span>#is', $content, $om)) {
+        $orderLine = $om[0];
+    }
+    $styleLink = '';
+    if (preg_match('#<LINK\b[^>]*>#i', $content, $sm)) {
+        $styleLink = $sm[0];
+    }
+
+    $total = strlen($content);
+    $count = count($markers);
+
+    for ($i = 0; $i < $count; $i++) {
+        $end = ($i + 1 < $count) ? $markers[$i + 1]['start'] : $total;
+        $fragment = substr($content, $markers[$i]['start'], $end - $markers[$i]['start']);
+
+        // у последней позиции обрезаем подвал с копирайтом
+        $cut = stripos($fragment, '<hr color=');
+        if ($cut !== false) {
+            $fragment = substr($fragment, 0, $cut);
+        }
+        $fragment = trim($fragment);
+
+        $article = auma_extract_article($fragment);
+        if ($article !== '' && !in_array($article, $result['articles'], true)) {
+            $result['articles'][] = $article;
+        }
+
+        // первая позиция остаётся в полном файле, остальные — отдельно
+        if ($i === 0 || $fragment === '') {
+            continue;
+        }
+
+        $result['parts'][] = [
+            'pos'     => $markers[$i]['pos'],
+            'article' => $article,
+            'content' => '<html><head><meta charset="utf-8">'
+                . '<title>Pos. ' . $markers[$i]['pos'] . '</title>'
+                . $styleLink
+                . '</head><body text="#000000" bgColor="#ffffff" leftMargin="6" topMargin="0">'
+                . $orderLine
+                . '<span style="display:block; margin:15px">' . $fragment . '</span>'
+                . '</body></html>',
+        ];
+    }
+
+    return $result;
+}
+
+/* ------------------------------------------------------------------ */
 /* Разбор PDF по позициям                                              */
 /* ------------------------------------------------------------------ */
 

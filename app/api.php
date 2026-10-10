@@ -400,10 +400,11 @@ function api_fetch_characteristics(): void
 
     // Заказ может состоять из нескольких позиций (Pos. 1.0, Pos. 2.0 ...).
     // Тогда в артикул полного файла пишем все изделия через подчёркивание,
-    // а страницы дополнительных позиций сохраняем отдельными документами.
+    // а дополнительные позиции сохраняем отдельными документами:
+    // у PDF это вырезанные страницы, у htm — вырезанная разметка.
     $split = $format === 'pdf'
         ? pdf_split_positions($file['content'])
-        : ['articles' => [], 'parts' => []];
+        : htm_split_positions($file['content']);
 
     if ($split['articles'] !== []) {
         $article = implode('_', $split['articles']);
@@ -421,17 +422,19 @@ function api_fetch_characteristics(): void
         'title'      => 'Характеристики ' . $order,
     ]);
 
-    // отдельные документы по страницам дополнительных позиций
+    // отдельные документы по дополнительным позициям
     $stem = (string) pathinfo($file['filename'], PATHINFO_FILENAME);
+    $ext = (string) pathinfo($file['filename'], PATHINFO_EXTENSION);
+    $ext = $ext !== '' ? '.' . $ext : '';
     $parts = [];
     foreach ($split['parts'] as $part) {
         $suffix = str_replace('.', '_', $part['pos']);
-        $parts[] = doc_store($user, $part['content'], $stem . '_pos' . $suffix . '.pdf', [
+        $parts[] = doc_store($user, $part['content'], $stem . '_pos' . $suffix . $ext, [
             'order_no'   => $order,
             'article'    => $part['article'],
             'doc_type'   => 'characteristics',
             'lang'       => 'en',
-            'mime'       => 'application/pdf',
+            'mime'       => $file['mime'],
             'source_url' => $file['url'],
             'title'      => 'Характеристики ' . $order . ' — Pos. ' . $part['pos'],
         ]);
