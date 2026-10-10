@@ -77,23 +77,47 @@ foreach ($docs as $doc) {
     foreach ($split['parts'] as $part) {
         $name = $stem . '_pos' . str_replace('.', '_', $part['pos']) . $ext;
         $exists = db_one(
-            'SELECT id, article FROM documents WHERE order_no = ? AND filename = ?',
+            'SELECT id, article, stored_name FROM documents WHERE order_no = ? AND filename = ?',
             [(string) $doc['order_no'], $name]
         );
 
         if ($exists) {
-            // файл уже есть, но артикул мог быть испорчен прежним пересчётом
-            // (у PDF он брался из htm-версии заказа, то есть от первой позиции)
-            if ($part['article'] !== '' && (string) $exists['article'] !== $part['article']) {
-                echo "     ~ {$name}: артикул {$exists['article']} -> {$part['article']}\n";
-                if ($write) {
-                    db_exec(
-                        'UPDATE documents SET article = ?, folder_code = ?, updated_at = ? WHERE id = ?',
-                        [$part['article'], folder_from_article($part['article']), now(), (int) $exists['id']]
-                    );
-                }
-                $repaired++;
+            // файл уже есть, но содержимое могло устареть (например, изменились
+            // границы позиций), а артикул — испортиться прежним пересчётом
+            $file = upload_dir() . '/' . basename((string) $exists['stored_name']);
+            $contentSame = is_file($file) && md5_file($file) === md5($part['content']);
+            $articleSame = (string) $exists['article'] === $part['article'];
+
+            if ($contentSame && $articleSame) {
+                continue;
             }
+
+            $what = [];
+            if (!$contentSame) {
+                $what[] = 'содержимое';
+            }
+            if (!$articleSame) {
+                $what[] = "артикул {$exists['article']} -> {$part['article']}";
+            }
+            echo "     ~ {$name}: " . implode(', ', $what) . "\n";
+
+            if ($write) {
+                if (!$contentSame) {
+                    file_put_contents($file, $part['content']);
+                }
+                db_exec(
+                    'UPDATE documents SET article = ?, folder_code = ?, size = ?, updated_at = ?
+                      WHERE id = ?',
+                    [
+                        $part['article'],
+                        folder_from_article($part['article']),
+                        strlen($part['content']),
+                        now(),
+                        (int) $exists['id'],
+                    ]
+                );
+            }
+            $repaired++;
             continue;
         }
 
