@@ -437,8 +437,8 @@ function htm_split_positions(string $content): array
             $result['articles'][] = $article;
         }
 
-        // первая позиция остаётся в полном файле, остальные — отдельно
-        if ($i === 0 || $fragment === '') {
+        // каждая позиция сохраняется отдельным файлом, включая первую
+        if ($fragment === '') {
             continue;
         }
 
@@ -587,10 +587,11 @@ function pdf_split_positions(string $content): array
             }
         }
 
-        // первая позиция остаётся в полном файле, остальные вырезаем
+        // каждая позиция сохраняется отдельным файлом, включая первую:
+        // в общем файле она тоже есть, но там их не разделить
         $count = count($positions);
         $stem = substr($tmp, 0, -4);
-        for ($i = 1; $i < $count; $i++) {
+        for ($i = 0; $i < $count; $i++) {
             $from = $positions[$i]['page'];
             $to = ($i + 1 < $count) ? $positions[$i + 1]['page'] - 1 : $outline['pages'];
             if ($to < $from) {
