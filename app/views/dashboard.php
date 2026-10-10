@@ -62,10 +62,6 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                 </div>
             </div>
             <?php endforeach; ?>
-            <a href="#" class="nav-item" data-view="favorite">
-                <svg viewBox="0 0 24 24" width="18" height="18"><path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8L12 4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-                Favourite
-            </a>
             <a href="#" class="nav-item" data-view="trash">
                 <svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 7h14M10 7V5h4v2m-7 0 1 12h8l1-12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 Trash
@@ -141,7 +137,7 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
             <section class="block">
                 <div class="block-head">
                     <h2>Операции</h2>
-                    <a href="#" class="link" data-view="recent">View All</a>
+                    <a href="#" class="link" data-view="dashboard">View All</a>
                 </div>
                 <div class="ops">
                     <button class="op" id="opChars" type="button">

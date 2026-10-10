@@ -138,7 +138,6 @@ function currentParams() {
     const p = Object.assign({}, state.filters);
     if (state.folder) p.folder = state.folder;
     if (state.group) p.group = state.group;
-    if (state.view === 'favorite') p.favorite = '1';
     if (state.view === 'trash') p.deleted = '1';
     return p;
 }
