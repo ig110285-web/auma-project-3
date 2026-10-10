@@ -266,7 +266,7 @@ button { font: inherit; cursor: pointer; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 12px 14px; font-size: 13px; }
 .head-row th { color: var(--ink-2); font-weight: 600; font-size: 12px; background: #fcfcfd; }
-.filter-row th { background: #fcfcfd; padding: 6px 10px 10px; border-bottom: 1px solid var(--line); }
+.filter-row th { background: #fcfcfd; padding: 6px 10px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .table tbody tr { border-top: 1px solid var(--line); }
 .table tbody tr:hover { background: #fcfdff; }
 
@@ -284,7 +284,9 @@ button { font: inherit; cursor: pointer; }
     background: #fff;
 }
 .f-input:focus { border-color: var(--blue); }
-.f-dates { display: flex; gap: 4px; }
+/* Фильтр «Data Uploaded»: поля дат стоят друг под другом,
+   в узкой колонке рядом они не помещаются */
+.f-dates { display: flex; flex-direction: column; gap: 4px; }
 
 .file-cell { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .file-icon {
