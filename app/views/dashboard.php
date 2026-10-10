@@ -205,24 +205,24 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                         <thead>
                             <tr class="head-row">
                                 <th class="col-file">File</th>
-                                <th class="col-date">Data Uploaded</th>
                                 <th class="col-article">Article</th>
                                 <th class="col-order">Order</th>
                                 <th class="col-size">File Size</th>
+                                <th class="col-date">Data Uploaded</th>
                                 <th class="col-owner">File Owner</th>
                                 <th class="col-action">Action</th>
                             </tr>
                             <tr class="filter-row">
                                 <th><input class="f-input" data-filter="file" placeholder="фильтр"></th>
+                                <th><input class="f-input" data-filter="article" placeholder="фильтр"></th>
+                                <th><input class="f-input" data-filter="order" placeholder="фильтр"></th>
+                                <th></th>
                                 <th>
                                     <div class="f-dates">
                                         <input class="f-input" type="date" data-filter="date_from" title="с">
                                         <input class="f-input" type="date" data-filter="date_to" title="по">
                                     </div>
                                 </th>
-                                <th><input class="f-input" data-filter="article" placeholder="фильтр"></th>
-                                <th><input class="f-input" data-filter="order" placeholder="фильтр"></th>
-                                <th></th>
                                 <th><input class="f-input" data-filter="owner" placeholder="фильтр"></th>
                                 <th></th>
                             </tr>

@@ -179,10 +179,10 @@ function renderDocs() {
                     </div>
                 </div>
             </td>
-            <td>${esc(d.created_human)}</td>
             <td>${esc(d.article) || '—'}</td>
             <td>${esc(d.order_no) || '—'}</td>
             <td>${esc(d.size_human)}</td>
+            <td>${esc(d.created_human)}</td>
             <td>
                 <div class="owner-cell">
                     <span class="owner-avatar">${esc(initial)}</span>

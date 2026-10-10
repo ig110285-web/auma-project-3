@@ -271,10 +271,10 @@ button { font: inherit; cursor: pointer; }
 .table tbody tr:hover { background: #fcfdff; }
 
 .col-file { width: 30%; }
-.col-date { width: 12%; }
 .col-article { width: 12%; }
 .col-order { width: 12%; }
 .col-size { width: 11%; }
+.col-date { width: 12%; }
 .col-owner { width: 16%; }
 .col-action { width: 132px; text-align: right; }
 
