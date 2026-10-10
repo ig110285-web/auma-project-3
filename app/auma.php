@@ -371,3 +371,159 @@ function auma_lookup_article(string $order): string
         return '';
     }
 }
+
+/* ------------------------------------------------------------------ */
+/* Разбор PDF по позициям                                              */
+/* ------------------------------------------------------------------ */
+
+/** Есть ли на сервере инструменты для работы с PDF. */
+function pdf_tools_available(): bool
+{
+    static $ok = null;
+    if ($ok === null) {
+        $ok = false;
+        if (function_exists('shell_exec')) {
+            // проверяем каждый инструмент отдельно: command -v с несколькими
+            // аргументами в dash сообщает только о первом
+            $pdftotext = trim((string) @shell_exec('command -v pdftotext 2>/dev/null'));
+            $qpdf = trim((string) @shell_exec('command -v qpdf 2>/dev/null'));
+            $ok = $pdftotext !== '' && $qpdf !== '';
+        }
+    }
+    return $ok;
+}
+
+/**
+ * Разобрать PDF: сколько в нём страниц и какие позиции на них приходятся.
+ *
+ * В паспорте заказа каждая позиция начинается со строки «Pos. N.0»,
+ * под которой стоит «Article <артикул>». Позиция может занимать
+ * несколько страниц — тогда продолжение идёт без новой пометки.
+ *
+ * @return array{pages:int, positions:array<int, array{pos:string, article:string, page:int}>}
+ */
+function pdf_outline(string $path): array
+{
+    $empty = ['pages' => 0, 'positions' => []];
+    if (!pdf_tools_available() || !is_file($path)) {
+        return $empty;
+    }
+    $text = (string) @shell_exec('pdftotext -layout ' . escapeshellarg($path) . ' - 2>/dev/null');
+    if (trim($text) === '') {
+        return $empty;
+    }
+
+    $pages = explode("\f", $text);
+    // последний кусок после завершающего перевода страницы пустой
+    if ($pages !== [] && trim((string) end($pages)) === '') {
+        array_pop($pages);
+    }
+
+    $positions = [];
+    foreach ($pages as $i => $page) {
+        if (!preg_match('/Pos\.\s*(\d+(?:\.\d+)?)/u', $page, $m)) {
+            continue;
+        }
+        $article = '';
+        if (preg_match('/Article\s+([A-Za-z0-9][A-Za-z0-9._\/-]*)/u', $page, $a)) {
+            $article = auma_normalize_article($a[1]);
+        }
+        $positions[] = [
+            'pos'     => $m[1],
+            'article' => $article,
+            'page'    => $i + 1,
+        ];
+    }
+
+    return ['pages' => count($pages), 'positions' => $positions];
+}
+
+/** Вырезать страницы from..to в отдельный файл. */
+function pdf_extract_pages(string $src, int $from, int $to, string $dst): bool
+{
+    if (!pdf_tools_available()) {
+        return false;
+    }
+    $range = $from === $to ? (string) $from : $from . '-' . $to;
+    @shell_exec(
+        'qpdf --empty --pages ' . escapeshellarg($src) . ' ' . escapeshellarg($range)
+        . ' -- ' . escapeshellarg($dst) . ' 2>/dev/null'
+    );
+    return is_file($dst) && filesize($dst) > 0;
+}
+
+/**
+ * Разложить скачанный PDF по позициям.
+ *
+ * Если позиций больше одной, возвращает:
+ *   articles — все артикулы по порядку страниц (для колонки Article
+ *              полного файла, склеиваются через подчёркивание);
+ *   parts    — страницы дополнительных позиций, каждая отдельным файлом.
+ *
+ * Если инструментов нет или позиция одна, оба списка пустые и документ
+ * сохраняется как раньше, целиком.
+ *
+ * @return array{articles:string[], parts:array<int, array{pos:string, article:string, content:string}>}
+ */
+function pdf_split_positions(string $content): array
+{
+    $result = ['articles' => [], 'parts' => []];
+    if (!pdf_tools_available() || $content === '') {
+        return $result;
+    }
+
+    // В Ubuntu у qpdf есть профиль AppArmor: читать он может не всё.
+    // Проверено на живом сервере — файлы из /var/www и временные файлы
+    // без расширения .pdf получают отказ, а /tmp/*.pdf читаются.
+    // Поэтому работаем только во временном каталоге и с расширением .pdf.
+    $base = tempnam(sys_get_temp_dir(), 'auma_tds_');
+    if ($base === false) {
+        return $result;
+    }
+    @unlink($base);
+    $tmp = $base . '.pdf';
+
+    if (file_put_contents($tmp, $content) === false) {
+        return $result;
+    }
+
+    try {
+        $outline = pdf_outline($tmp);
+        $positions = $outline['positions'];
+
+        if (count($positions) < 2) {
+            return $result;
+        }
+
+        foreach ($positions as $p) {
+            if ($p['article'] !== '' && !in_array($p['article'], $result['articles'], true)) {
+                $result['articles'][] = $p['article'];
+            }
+        }
+
+        // первая позиция остаётся в полном файле, остальные вырезаем
+        $count = count($positions);
+        $stem = substr($tmp, 0, -4);
+        for ($i = 1; $i < $count; $i++) {
+            $from = $positions[$i]['page'];
+            $to = ($i + 1 < $count) ? $positions[$i + 1]['page'] - 1 : $outline['pages'];
+            if ($to < $from) {
+                $to = $from;
+            }
+            $partFile = $stem . '_pos' . $i . '.pdf';
+            if (!pdf_extract_pages($tmp, $from, $to, $partFile)) {
+                continue;
+            }
+            $result['parts'][] = [
+                'pos'     => $positions[$i]['pos'],
+                'article' => $positions[$i]['article'],
+                'content' => (string) file_get_contents($partFile),
+            ];
+            @unlink($partFile);
+        }
+    } finally {
+        @unlink($tmp);
+    }
+
+    return $result;
+}

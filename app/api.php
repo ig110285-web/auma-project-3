@@ -398,7 +398,19 @@ function api_fetch_characteristics(): void
         json_error($e->getMessage(), 502);
     }
 
-    $article = resolve_article($order, auma_article_from_content($file['content']));
+    // Заказ может состоять из нескольких позиций (Pos. 1.0, Pos. 2.0 ...).
+    // Тогда в артикул полного файла пишем все изделия через подчёркивание,
+    // а страницы дополнительных позиций сохраняем отдельными документами.
+    $split = $format === 'pdf'
+        ? pdf_split_positions($file['content'])
+        : ['articles' => [], 'parts' => []];
+
+    if ($split['articles'] !== []) {
+        $article = implode('_', $split['articles']);
+    } else {
+        $article = resolve_article($order, auma_article_from_content($file['content']));
+    }
+
     $doc = doc_store($user, $file['content'], $file['filename'], [
         'order_no'   => $order,
         'article'    => $article,
@@ -409,7 +421,27 @@ function api_fetch_characteristics(): void
         'title'      => 'Характеристики ' . $order,
     ]);
 
-    json_out(['item' => $doc, 'folder' => folder_from_article($article)], 201);
+    // отдельные документы по страницам дополнительных позиций
+    $stem = (string) pathinfo($file['filename'], PATHINFO_FILENAME);
+    $parts = [];
+    foreach ($split['parts'] as $part) {
+        $suffix = str_replace('.', '_', $part['pos']);
+        $parts[] = doc_store($user, $part['content'], $stem . '_pos' . $suffix . '.pdf', [
+            'order_no'   => $order,
+            'article'    => $part['article'],
+            'doc_type'   => 'characteristics',
+            'lang'       => 'en',
+            'mime'       => 'application/pdf',
+            'source_url' => $file['url'],
+            'title'      => 'Характеристики ' . $order . ' — Pos. ' . $part['pos'],
+        ]);
+    }
+
+    json_out([
+        'item'   => $doc,
+        'folder' => folder_from_article($article),
+        'parts'  => $parts,
+    ], 201);
 }
 
 /* --- загрузка схемы подключения ------------------------------------ */

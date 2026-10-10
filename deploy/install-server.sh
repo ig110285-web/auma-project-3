@@ -12,7 +12,8 @@ apt-get install -y -qq \
   nginx \
   mysql-server \
   php-fpm php-mysql php-curl php-mbstring php-xml php-zip php-gd \
-  curl unzip git
+  curl unzip git \
+  qpdf poppler-utils
 
 echo "=== 3. версии ==="
 nginx -v 2>&1
