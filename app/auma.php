@@ -539,6 +539,124 @@ function pdf_extract_pages(string $src, int $from, int $to, string $dst): bool
 }
 
 /**
+ * Где именно на страницах стоят пометки «Pos.».
+ *
+ * Нужно, чтобы отрезать от страницы чужие данные: таблица позиции
+ * часто переходит на следующую страницу, и на одной странице
+ * оказывается хвост одной позиции и начало другой.
+ * Координаты — в точках от верхнего края страницы.
+ *
+ * @return array{pages:array<int, array{w:float, h:float}>, marks:array<int, array{page:int, y:float}>}
+ */
+function pdf_page_markers(string $path): array
+{
+    $out = ['pages' => [], 'marks' => []];
+    if (!pdf_tools_available() || !is_file($path)) {
+        return $out;
+    }
+    $xml = (string) @shell_exec('pdftotext -bbox ' . escapeshellarg($path) . ' - 2>/dev/null');
+    if (trim($xml) === '') {
+        return $out;
+    }
+    if (!preg_match_all('#<page width="([\d.]+)" height="([\d.]+)">(.*?)</page>#s', $xml, $pages, PREG_SET_ORDER)) {
+        return $out;
+    }
+
+    foreach ($pages as $i => $page) {
+        $no = $i + 1;
+        $out['pages'][$no] = ['w' => (float) $page[1], 'h' => (float) $page[2]];
+        if (preg_match_all('#<word[^>]*yMin="([\d.]+)"[^>]*>\s*Pos\.?\s*</word>#', $page[3], $m)) {
+            foreach ($m[1] as $y) {
+                $out['marks'][] = ['page' => $no, 'y' => (float) $y];
+            }
+        }
+    }
+    return $out;
+}
+
+/**
+ * Собрать файл одной позиции из страниц from..to.
+ *
+ * $headCut — с какой точки сверху начинать содержимое (отрезает данные
+ * предыдущей позиции), $tailCut — где заканчивать (отрезает данные
+ * следующей). null означает «не резать».
+ *
+ * Страница остаётся своего размера: pdftocairo убирает содержимое за
+ * пределами области, но сам лист не уменьшает — так и задумано.
+ */
+function pdf_assemble_pages(
+    string $src,
+    int $from,
+    int $to,
+    ?float $headCut,
+    ?float $tailCut,
+    array $geometry,
+    string $dst
+): bool {
+    if (!pdf_tools_available()) {
+        return false;
+    }
+
+    $parts = [];
+    $seq = 0;
+    for ($page = $from; $page <= $to; $page++) {
+        $size = $geometry['pages'][$page] ?? null;
+        if ($size === null) {
+            foreach ($parts as $f) {
+                @unlink($f);
+            }
+            return false;
+        }
+
+        $top = ($page === $from && $headCut !== null) ? max(0.0, $headCut) : 0.0;
+        $bottom = ($page === $to && $tailCut !== null) ? min($size['h'], $tailCut) : $size['h'];
+        $height = $bottom - $top;
+
+        $out = sys_get_temp_dir() . '/auma_pg_' . getmypid() . '_' . (++$seq) . '.pdf';
+
+        if ($top <= 0.5 && $height >= $size['h'] - 0.5) {
+            // страница нужна целиком
+            @shell_exec(
+                'qpdf --empty --pages ' . escapeshellarg($src) . ' ' . $page
+                . ' -- ' . escapeshellarg($out) . ' 2>/dev/null'
+            );
+        } else {
+            if ($height < 5) {
+                $height = 5;   // защита от вырожденного диапазона
+            }
+            // -r 72: одна точка PDF равна одному пикселю, координаты совпадают
+            @shell_exec(
+                'pdftocairo -pdf -r 72 -x 0'
+                . ' -y ' . (int) round($top)
+                . ' -W ' . (int) round($size['w'])
+                . ' -H ' . (int) round($height)
+                . ' -f ' . $page . ' -l ' . $page . ' '
+                . escapeshellarg($src) . ' ' . escapeshellarg($out) . ' 2>/dev/null'
+            );
+        }
+
+        if (!is_file($out) || filesize($out) === 0) {
+            foreach ($parts as $f) {
+                @unlink($f);
+            }
+            @unlink($out);
+            return false;
+        }
+        $parts[] = $out;
+    }
+
+    $cmd = 'qpdf --empty --pages '
+        . implode(' ', array_map('escapeshellarg', $parts))
+        . ' -- ' . escapeshellarg($dst) . ' 2>/dev/null';
+    @shell_exec($cmd);
+
+    foreach ($parts as $f) {
+        @unlink($f);
+    }
+    return is_file($dst) && filesize($dst) > 0;
+}
+
+/**
  * Разложить скачанный PDF по позициям.
  *
  * Если позиций больше одной, возвращает:
@@ -587,23 +705,39 @@ function pdf_split_positions(string $content): array
             }
         }
 
-        // каждая позиция сохраняется отдельным файлом, включая первую.
+        // Каждая позиция сохраняется отдельным файлом, включая первую.
         //
-        // Позиция занимает страницы со своей пометки Pos. N.0 до пометки
-        // следующей позиции ВКЛЮЧИТЕЛЬНО: таблица позиции часто переходит
-        // на следующую страницу, и если резать по страницу раньше, её хвост
-        // потеряется. Разрезать страницу PDF пополам нельзя, поэтому
-        // соседние позиции частично перекрываются — зато ничего не теряется.
+        // Таблица позиции часто переходит на следующую страницу, поэтому
+        // на одной странице оказывается хвост предыдущей позиции и начало
+        // следующей. По координатам пометки «Pos.» лишнее отрезается:
+        // у первой страницы позиции — всё, что выше её пометки,
+        // у последней — всё, что ниже пометки следующей позиции.
         $count = count($positions);
         $stem = substr($tmp, 0, -4);
+        $geometry = pdf_page_markers($tmp);
+        $marks = $geometry['marks'];
+
         for ($i = 0; $i < $count; $i++) {
-            $from = $positions[$i]['page'];
-            $to = ($i + 1 < $count) ? $positions[$i + 1]['page'] : $outline['pages'];
+            $mark = $marks[$i] ?? null;
+            if ($mark === null) {
+                continue;   // без координат пометки резать нечего
+            }
+            $nextMark = $marks[$i + 1] ?? null;
+
+            $from = $mark['page'];
+            $to = $nextMark !== null ? $nextMark['page'] : ($outline['pages'] ?: $from);
             if ($to < $from) {
                 $to = $from;
             }
+
+            // 3 точки запаса, чтобы не срезать саму строку пометки
+            $headCut = $i > 0 ? max(0.0, $mark['y'] - 3) : null;
+            $tailCut = ($nextMark !== null && $nextMark['page'] === $to)
+                ? max(0.0, $nextMark['y'] - 3)
+                : null;
+
             $partFile = $stem . '_pos' . $i . '.pdf';
-            if (!pdf_extract_pages($tmp, $from, $to, $partFile)) {
+            if (!pdf_assemble_pages($tmp, $from, $to, $headCut, $tailCut, $geometry, $partFile)) {
                 continue;
             }
             $result['parts'][] = [
