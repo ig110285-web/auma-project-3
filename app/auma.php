@@ -574,6 +574,32 @@ function pdf_page_markers(string $path): array
     return $out;
 }
 
+/** Умеет ли ghostscript сдвигать содержимое страницы. */
+function pdf_can_shift(): bool
+{
+    static $ok = null;
+    if ($ok === null) {
+        $ok = function_exists('shell_exec')
+            && trim((string) @shell_exec('command -v gs 2>/dev/null')) !== '';
+    }
+    return $ok;
+}
+
+/** Поднять содержимое страницы на $dy точек — к верхнему краю листа. */
+function pdf_lift(string $src, float $dy, string $dst): bool
+{
+    if (!pdf_can_shift() || !is_file($src)) {
+        return false;
+    }
+    @shell_exec(
+        'gs -q -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite -sOutputFile='
+        . escapeshellarg($dst)
+        . ' -c "<</PageOffset [0 ' . round($dy, 2) . ']>> setpagedevice"'
+        . ' -f ' . escapeshellarg($src) . ' 2>/dev/null'
+    );
+    return is_file($dst) && filesize($dst) > 0;
+}
+
 /**
  * Собрать файл одной позиции из страниц from..to.
  *
@@ -581,8 +607,10 @@ function pdf_page_markers(string $path): array
  * предыдущей позиции), $tailCut — где заканчивать (отрезает данные
  * следующей). null означает «не резать».
  *
- * Страница остаётся своего размера: pdftocairo убирает содержимое за
- * пределами области, но сам лист не уменьшает — так и задумано.
+ * Лист остаётся своего размера: содержимое за пределами области убирает
+ * pdftocairo, но сам лист не уменьшает. Он же прижимает оставшееся
+ * к нижнему краю, поэтому затем содержимое поднимается ghostscript'ом —
+ * иначе середина или низ страницы остались бы пустыми.
  */
 function pdf_assemble_pages(
     string $src,
@@ -624,15 +652,26 @@ function pdf_assemble_pages(
             if ($height < 5) {
                 $height = 5;   // защита от вырожденного диапазона
             }
-            // -r 72: одна точка PDF равна одному пикселю, координаты совпадают
+            $shift = $size['h'] - $height;
+            $canLift = $shift > 0.5 && pdf_can_shift();
+            $cropped = $out . '.crop.pdf';
+
+            // -r 72: одна точка PDF равна одному пикселю, координаты совпадают.
+            // С -nocenter область прижимается к низу листа — её потом поднимаем.
             @shell_exec(
-                'pdftocairo -pdf -r 72 -x 0'
-                . ' -y ' . (int) round($top)
+                'pdftocairo -pdf -r 72' . ($canLift ? ' -nocenter' : '')
+                . ' -x 0 -y ' . (int) round($top)
                 . ' -W ' . (int) round($size['w'])
                 . ' -H ' . (int) round($height)
                 . ' -f ' . $page . ' -l ' . $page . ' '
-                . escapeshellarg($src) . ' ' . escapeshellarg($out) . ' 2>/dev/null'
+                . escapeshellarg($src) . ' ' . escapeshellarg($cropped) . ' 2>/dev/null'
             );
+
+            if ($canLift && pdf_lift($cropped, $shift, $out)) {
+                @unlink($cropped);
+            } else {
+                @rename($cropped, $out);
+            }
         }
 
         if (!is_file($out) || filesize($out) === 0) {

@@ -13,7 +13,7 @@ apt-get install -y -qq \
   mysql-server \
   php-fpm php-mysql php-curl php-mbstring php-xml php-zip php-gd \
   curl unzip git \
-  qpdf poppler-utils
+  qpdf poppler-utils ghostscript
 
 echo "=== 3. версии ==="
 nginx -v 2>&1
