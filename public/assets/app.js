@@ -192,8 +192,13 @@ function renderDocs() {
             </td>
             <td>
                 <div class="actions">
-                    <button class="act star${d.favorite ? ' on' : ''}" data-act="star" data-id="${d.id}" title="В избранное">
-                        <svg viewBox="0 0 24 24" width="17" height="17"><path d="m12 4 2.4 5 5.6.8-4 3.9 1 5.5-5-2.7-5 2.7 1-5.5-4-3.9 5.6-.8L12 4Z" fill="${d.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                    <button class="act passport" data-act="passport" data-id="${d.id}" title="Создать паспорт">
+                        <svg viewBox="0 0 24 24" width="17" height="17">
+                            <path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                            <path d="M14 3v4h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                            <path d="M9 11h6M9 14h3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                            <circle cx="15" cy="17.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+                        </svg>
                     </button>
                     <a class="act view" href="${esc(viewLink(d))}" target="_blank"
                        rel="noopener" title="Посмотреть без скачивания">
@@ -283,20 +288,6 @@ async function refreshAll() {
 
 /* ---------------- Действия в строке ---------------- */
 
-async function toggleStar(id) {
-    const doc = state.docs.find(d => d.id === id);
-    if (!doc) return;
-    try {
-        const res = await api('/api/documents/' + id + '/favorite', {
-            method: 'POST', body: { value: !doc.favorite }
-        });
-        doc.favorite = res.favorite;
-        renderDocs();
-    } catch (e) {
-        toast(e.message, 'error');
-    }
-}
-
 function openRowMenu(id, anchor) {
     const menu = $('#rowMenu');
     // id храним прямо на элементе меню: state может обнулиться от постороннего события
@@ -382,6 +373,13 @@ async function downloadDoc(id) {
     } catch (e) {
         toast(e.message, 'error', 8000);
     }
+}
+
+/** Создание паспорта по документу — сделаем позже. */
+function createPassport(id) {
+    const doc = state.docs.find(d => d.id === id);
+    toast('Создание паспорта появится позже'
+        + (doc ? ': ' + doc.filename : ''));
 }
 
 async function deleteDoc(id) {
@@ -509,7 +507,9 @@ function init() {
     // Операции
     $('#opChars').addEventListener('click', fetchCharacteristics);
     $('#opScheme').addEventListener('click', fetchScheme);
-    $('#opPassport').addEventListener('click', () => toast('Создание паспорта пока не реализовано'));
+    $('#opPassport').addEventListener('click', () => {
+        toast('Создание паспорта появится позже');
+    });
 
     // Формат
     $$('#fmtTabs .fmt').forEach(b => b.addEventListener('click', () => {
@@ -595,8 +595,8 @@ function init() {
         const btn = e.target.closest('[data-act]');
         if (!btn) return;
         const id = parseInt(btn.dataset.id, 10);
-        if (btn.dataset.act === 'star') { e.preventDefault(); toggleStar(id); }
         if (btn.dataset.act === 'menu') { e.preventDefault(); openRowMenu(id, btn); }
+        if (btn.dataset.act === 'passport') { e.preventDefault(); createPassport(id); }
         if (btn.dataset.act === 'download') { e.preventDefault(); downloadDoc(id); }
     });
 

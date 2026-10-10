@@ -158,7 +158,12 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                     </button>
                     <button class="op" id="opPassport" type="button">
                         <span class="op-icon">
-                            <svg viewBox="0 0 24 24" width="26" height="26"><circle cx="12" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 7.7 7.4 15m6-7.3 3.2 7.3M8.4 17h7.2" stroke="currentColor" stroke-width="1.6"/></svg>
+                            <svg viewBox="0 0 24 24" width="26" height="26">
+                                <path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                <path d="M14 3v4h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                                <path d="M9 11h6M9 14h3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                                <circle cx="15" cy="17.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+                            </svg>
                         </span>
                         <span class="op-title">Создать паспорт</span>
                     </button>
