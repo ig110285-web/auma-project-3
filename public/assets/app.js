@@ -84,10 +84,22 @@ function viewLink(doc) {
     return url('/view', { id: doc.id });
 }
 
-/** Иконка файла. У схем подключения она зелёная, у остальных синяя. */
+/**
+ * Иконка файла:
+ *   схема подключения — зелёная,
+ *   страница .htm       — жёлтая,
+ *   остальные           — синие.
+ */
 function fileIcon(doc) {
-    const isScheme = doc && doc.doc_type === 'scheme';
-    return '<span class="file-icon' + (isScheme ? ' scheme' : '') + '">'
+    let kind = '';
+    if (doc) {
+        if (doc.doc_type === 'scheme') {
+            kind = ' scheme';
+        } else if (doc.format === 'htm') {
+            kind = ' htm';
+        }
+    }
+    return '<span class="file-icon' + kind + '">'
         + '<svg viewBox="0 0 24 24" width="15" height="15">'
         + '<path d="M14 3v5h5M7 3h7l5 5v13H7z" fill="none" stroke="currentColor" '
         + 'stroke-width="1.7" stroke-linejoin="round"/></svg></span>';

@@ -10,6 +10,13 @@
 $doc = $doc ?? [];
 $isHtml = $isHtml ?? false;
 $embed = $embed ?? '';
+// цвет иконки тот же, что в таблице: схема — зелёная, htm — жёлтая, иначе синяя
+$iconKind = '';
+if (($doc['doc_type'] ?? '') === 'scheme') {
+    $iconKind = ' scheme';
+} elseif ($isHtml) {
+    $iconKind = ' htm';
+}
 $downloadUrl = base_path('/api/documents/' . (int) $doc['id'] . '/download');
 $rawUrl = $downloadUrl . '?mode=view';
 $backUrl = base_path('/');
@@ -29,7 +36,7 @@ $backUrl = base_path('/');
     <a class="viewer-back" href="<?= e($backUrl) ?>" title="Назад">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </a>
-    <span class="viewer-icon<?= $isHtml ? '' : ' pdf' ?>">
+    <span class="viewer-icon<?= $iconKind ?>">
         <svg viewBox="0 0 24 24" width="15" height="15"><path d="M14 3v5h5M7 3h7l5 5v13H7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
     </span>
     <div class="viewer-info">

@@ -291,8 +291,10 @@ button { font: inherit; cursor: pointer; }
     width: 30px; height: 30px; border-radius: 8px; background: var(--blue-soft);
     display: grid; place-items: center; color: var(--blue); flex: 0 0 auto;
 }
-/* Схемы подключения помечаем зелёным, чтобы отличать от характеристик */
+/* Схемы подключения помечаем зелёным, страницы .htm — жёлтым,
+   остальные остаются синими */
 .file-icon.scheme { background: #e7f8ef; color: #12b76a; }
+.file-icon.htm { background: #fef5e7; color: #f5a524; }
 .file-name {
     display: block; font-weight: 500; color: var(--ink);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -384,10 +386,11 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 }
 .viewer-back:hover { background: #f7f8fa; color: var(--ink); }
 .viewer-icon {
-    width: 30px; height: 30px; border-radius: 8px; background: #e7f8ef; color: #12b76a;
+    width: 30px; height: 30px; border-radius: 8px; background: var(--blue-soft); color: var(--blue);
     display: grid; place-items: center; flex: 0 0 auto;
 }
-.viewer-icon.pdf { background: var(--blue-soft); color: var(--blue); }
+.viewer-icon.scheme { background: #e7f8ef; color: #12b76a; }
+.viewer-icon.htm { background: #fef5e7; color: #f5a524; }
 .viewer-info { min-width: 0; flex: 1; }
 .viewer-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .viewer-meta { font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
