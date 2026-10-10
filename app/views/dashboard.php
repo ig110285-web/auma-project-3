@@ -46,6 +46,8 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
             $groupIcons = [
                 'drive'    => '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5.5A3.5 3.5 0 1 1 12 15.5 3.5 3.5 0 0 1 12 8.5Z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
                 'controls' => '<rect x="4" y="5" width="16" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 9h8M8 12.5h5M8 16h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+                // редуктор — шестерня: внутренний круг и зубцы пунктиром
+                'gearbox'  => '<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="7.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-dasharray="2.4 2.6"/>',
             ];
             ?>
             <?php foreach (catalog() as $group): ?>

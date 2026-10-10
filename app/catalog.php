@@ -36,4 +36,11 @@ return [
             ['code' => 'AMExC', 'title' => 'AMExC', 'description' => 'Блоки управления AMExC'],
         ],
     ],
+    [
+        'code'    => 'gearbox',
+        'title'   => 'Редуктор',
+        'folders' => [
+            ['code' => 'GS', 'title' => 'GS', 'description' => 'Редукторы серии GS'],
+        ],
+    ],
 ];
