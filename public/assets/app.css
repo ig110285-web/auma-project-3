@@ -103,7 +103,6 @@ button { font: inherit; cursor: pointer; }
 .nav-item:hover { background: #f7f8fa; color: var(--ink); }
 .nav-item.active { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
 .nav-item .chev { margin-left: auto; }
-.nav-item:not(:has(svg)) { padding-left: 38px; }
 
 /* Группы меню: «Привод», «Блоки управления» и папки внутри них */
 .nav-group { display: flex; flex-direction: column; gap: 2px; }
@@ -117,7 +116,8 @@ button { font: inherit; cursor: pointer; }
 
 .nav-sub { display: flex; flex-direction: column; gap: 2px; }
 .nav-group.collapsed .nav-sub { display: none; }
-.nav-sub-item { padding-left: 38px; font-size: 13px; }
+/* отступ пунктов подменю: SA, SAEx, SQ, SQEx и так далее */
+.nav-sub-item { padding-left: 10px; font-size: 13px; }
 
 /* ---------------- Плашка хранилища ---------------- */
 
