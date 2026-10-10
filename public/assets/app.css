@@ -114,10 +114,12 @@ button { font: inherit; cursor: pointer; }
 .nav-group.collapsed .nav-toggle .chev { transform: rotate(-90deg); }
 .nav-group.active > .nav-toggle { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
 
-.nav-sub { display: flex; flex-direction: column; gap: 2px; }
+/* Подменю: пункты SA, SAEx, SQ, SQEx и так далее.
+   Отступ слева выравнивает их под названием группы,
+   gap задаёт расстояние по вертикали между пунктами. */
+.nav-sub { display: flex; flex-direction: column; gap: 6px; }
 .nav-group.collapsed .nav-sub { display: none; }
-/* отступ пунктов подменю: SA, SAEx, SQ, SQEx и так далее */
-.nav-sub-item { padding-left: 10px; font-size: 13px; }
+.nav-sub-item { padding-left: 38px; font-size: 13px; }
 
 /* ---------------- Плашка хранилища ---------------- */
 
