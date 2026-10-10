@@ -100,6 +100,29 @@ function catalog_group_folders(string $groupCode): array
 }
 
 /**
+ * Соответствие «приставка артикула → папка».
+ *
+ * У папки может быть несколько приставок: например, BSA относят к SA.
+ * Если список не задан, приставкой считается код самой папки.
+ */
+function catalog_folder_prefixes(): array
+{
+    $map = [];
+    foreach (catalog() as $group) {
+        foreach ($group['folders'] as $folder) {
+            $prefixes = $folder['prefixes'] ?? [$folder['code']];
+            foreach ((array) $prefixes as $prefix) {
+                $norm = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $prefix) ?? '');
+                if ($norm !== '') {
+                    $map[$norm] = (string) $folder['code'];
+                }
+            }
+        }
+    }
+    return $map;
+}
+
+/**
  * Убрать из чужого HTML всё исполняемое.
  *
  * Документы приходят с сайта AUMA и встраиваются в нашу страницу. Атрибут

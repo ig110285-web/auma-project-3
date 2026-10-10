@@ -68,9 +68,10 @@ function now(): string
 /**
  * Определить папку по артикулу.
  *
- * Папки берутся из дерева в app/catalog.php, поэтому добавление новой
- * группы не требует правок здесь. Сначала проверяются длинные обозначения:
- * иначе ACExC попал бы в AC, а SAEx — в SA.
+ * Приставки берутся из дерева в app/catalog.php, поэтому новая папка
+ * или новое обозначение не требуют правок здесь. Совпадение ищется
+ * по самой длинной приставке: иначе ACExC попал бы в AC, а SAEx — в SA.
+ * BSA относят к SA — это задано приставкой у папки SA.
  */
 function folder_from_article(string $article): string
 {
@@ -79,13 +80,13 @@ function folder_from_article(string $article): string
         return '';
     }
 
-    $codes = catalog_folder_codes();
-    usort($codes, static fn(string $x, string $y): int => strlen($y) <=> strlen($x));
+    $map = catalog_folder_prefixes();
+    $prefixes = array_keys($map);
+    usort($prefixes, static fn(string $x, string $y): int => strlen($y) <=> strlen($x));
 
-    foreach ($codes as $code) {
-        $prefix = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $code) ?? '');
-        if ($prefix !== '' && str_starts_with($a, $prefix)) {
-            return $code;
+    foreach ($prefixes as $prefix) {
+        if (str_starts_with($a, $prefix)) {
+            return $map[$prefix];
         }
     }
     return '';
