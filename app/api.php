@@ -16,6 +16,7 @@ function api_handle(string $method, string $path): void
         ['GET',    '#^/api/documents$#',                   'api_documents'],
         ['POST',   '#^/api/fetch/characteristics$#',       'api_fetch_characteristics'],
         ['POST',   '#^/api/fetch/scheme$#',                'api_fetch_scheme'],
+        ['POST',   '#^/api/documents/(\d+)/passport$#',    'api_passport'],
         ['GET',    '#^/api/documents/(\d+)/download$#',    'api_download'],
         ['POST',   '#^/api/documents/(\d+)/favorite$#',    'api_favorite'],
         ['POST',   '#^/api/documents/(\d+)/email$#',       'api_email'],
@@ -611,5 +612,75 @@ function api_email(int $id): void
         'sent'    => false,
         'log_id'  => $logId,
         'message' => 'Отправка на почту пока отключена. Письмо сохранено в журнал (#' . $logId . ').',
+    ]);
+}
+
+/**
+ * Собрать паспорт привода по загруженному .htm заказа.
+ *
+ * POST /api/documents/{id}/passport
+ *
+ * Значения берутся из характеристик документа по правилам
+ * AUMA-motor-rule.xlsx, часть добирается из справочника AUMA-motor.xlsx.
+ * Готовый PDF сохраняется отдельным документом рядом с исходным.
+ */
+function api_passport(int $id): void
+{
+    $user = api_require_user();
+
+    $doc = db_one('SELECT * FROM documents WHERE id = ? AND deleted = 0', [$id]);
+    if (!$doc) {
+        json_error('Документ не найден', 404);
+    }
+    if ((string) $doc['format'] !== 'htm') {
+        json_error('Паспорт собирается по файлу .htm — возьмите страницу характеристик', 400);
+    }
+
+    $path = upload_dir() . '/' . basename((string) $doc['stored_name']);
+    if (!is_file($path)) {
+        json_error('Файл документа не найден на диске', 404);
+    }
+    if (!is_file(passport_template())) {
+        json_error('Нет шаблона паспорта privod-sa-passport.pdf', 500);
+    }
+
+    $html = (string) file_get_contents($path);
+    $chars = htm_characteristics($html);
+    if ($chars === []) {
+        json_error('Не удалось разобрать характеристики в документе', 422);
+    }
+
+    $order = (string) $doc['order_no'];
+    $values = passport_values($chars, passport_rules(), $order, $html);
+
+    // собираем во временный файл, а в хранилище кладём уже готовое
+    $tmp = sys_get_temp_dir() . '/auma_passport_' . getmypid() . '_' . bin2hex(random_bytes(4)) . '.pdf';
+    $report = passport_fill(passport_template(), $values, $tmp);
+    if (!empty($report['error']) || !is_file($tmp)) {
+        json_error(
+            'Не удалось собрать паспорт: ' . ($report['error'] ?? 'файл не создан'),
+            500
+        );
+    }
+    $content = (string) file_get_contents($tmp);
+    @unlink($tmp);
+
+    $article = (string) $doc['article'];
+    $item = doc_store($user, $content, 'Passport_' . $order . '_' . $article . '.pdf', [
+        'order_no'   => $order,
+        'article'    => $article,
+        'doc_type'   => 'passport',
+        'lang'       => (string) $doc['lang'],
+        'mime'       => 'application/pdf',
+        'source_url' => (string) $doc['source_url'],
+        'title'      => 'Паспорт ' . $order . ' — ' . $article,
+    ]);
+    log_event((int) $user['id'], 'passport', 'document', (int) $item['id'], $order);
+
+    json_out([
+        'ok'      => true,
+        'item'    => $item,
+        'placed'  => (int) ($report['placed'] ?? 0),
+        'missing' => $report['missing'] ?? [],
     ]);
 }

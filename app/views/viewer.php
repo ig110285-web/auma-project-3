@@ -10,10 +10,14 @@
 $doc = $doc ?? [];
 $isHtml = $isHtml ?? false;
 $embed = $embed ?? '';
-// цвет иконки тот же, что в таблице: схема — зелёная, htm — жёлтая, иначе синяя
+// цвет иконки тот же, что в таблице: схема — зелёная, htm — жёлтая,
+// паспорт — сиреневая, иначе синяя
 $iconKind = '';
-if (($doc['doc_type'] ?? '') === 'scheme') {
+$docType = (string) ($doc['doc_type'] ?? '');
+if ($docType === 'scheme') {
     $iconKind = ' scheme';
+} elseif ($docType === 'passport') {
+    $iconKind = ' passport';
 } elseif ($isHtml) {
     $iconKind = ' htm';
 }

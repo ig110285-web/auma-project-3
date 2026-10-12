@@ -11,6 +11,7 @@ require BASE_DIR . '/app/helpers.php';
 require BASE_DIR . '/app/db.php';
 require BASE_DIR . '/app/auth.php';
 require BASE_DIR . '/app/auma.php';
+require BASE_DIR . '/app/passport.php';
 require BASE_DIR . '/app/api.php';
 
 $path   = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';

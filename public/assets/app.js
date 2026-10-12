@@ -95,6 +95,8 @@ function fileIcon(doc) {
     if (doc) {
         if (doc.doc_type === 'scheme') {
             kind = ' scheme';
+        } else if (doc.doc_type === 'passport') {
+            kind = ' passport';
         } else if (doc.format === 'htm') {
             kind = ' htm';
         }
@@ -386,11 +388,38 @@ async function downloadDoc(id) {
     }
 }
 
-/** Создание паспорта по документу — сделаем позже. */
-function createPassport(id) {
+/** Создать паспорт привода по загруженному .htm заказа. */
+async function createPassport(id) {
     const doc = state.docs.find(d => d.id === id);
-    toast('Создание паспорта появится позже'
-        + (doc ? ': ' + doc.filename : ''));
+    if (!doc) return;
+
+    if (doc.format !== 'htm') {
+        toast('Паспорт собирается по файлу .htm — возьмите страницу характеристик', 'error');
+        return;
+    }
+
+    const btn = document.querySelector('[data-act="passport"][data-id="' + id + '"]');
+    if (btn) btn.classList.add('busy');
+    toast('Собираю паспорт ' + (doc.article || doc.order_no || '') + '…');
+
+    try {
+        const res = await api('/api/documents/' + id + '/passport', { method: 'POST' });
+        await refreshAll();
+
+        let msg = 'Паспорт готов: ' + res.item.filename;
+        if (res.missing && res.missing.length) {
+            msg += '. Не подставлено: ' + res.missing.length;
+        }
+        toast(msg, 'ok');
+
+        if (btn) btn.classList.remove('busy');
+        if (res.missing && res.missing.length) {
+            console.warn('Не найдены в шаблоне:', res.missing);
+        }
+    } catch (e) {
+        if (btn) btn.classList.remove('busy');
+        toast(e.message, 'error');
+    }
 }
 
 async function deleteDoc(id) {

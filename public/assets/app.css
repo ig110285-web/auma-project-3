@@ -294,9 +294,10 @@ button { font: inherit; cursor: pointer; }
     display: grid; place-items: center; color: var(--blue); flex: 0 0 auto;
 }
 /* Схемы подключения помечаем зелёным, страницы .htm — жёлтым,
-   остальные остаются синими */
+   паспорта — сиреневым, остальные остаются синими */
 .file-icon.scheme { background: #e7f8ef; color: #12b76a; }
 .file-icon.htm { background: #fef5e7; color: #f5a524; }
+.file-icon.passport { background: #f3e8fd; color: #9b51e0; }
 .file-name {
     display: block; font-weight: 500; color: var(--ink);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -319,6 +320,8 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 .act:hover { background: #f2f4f7; color: var(--ink); }
 .act.on { color: #f5a524; }
 .act.dl { color: var(--ink-3); }
+/* пока паспорт собирается, кнопка неактивна */
+.act.busy { opacity: .4; pointer-events: none; }
 
 .empty { text-align: center; color: var(--ink-3); padding: 34px 10px; }
 .table-foot { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); }
@@ -393,6 +396,7 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 }
 .viewer-icon.scheme { background: #e7f8ef; color: #12b76a; }
 .viewer-icon.htm { background: #fef5e7; color: #f5a524; }
+.viewer-icon.passport { background: #f3e8fd; color: #9b51e0; }
 .viewer-info { min-width: 0; flex: 1; }
 .viewer-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .viewer-meta { font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
