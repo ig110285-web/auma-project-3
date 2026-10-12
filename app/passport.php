@@ -449,7 +449,7 @@ function passport_values(array $chars, array $rules, string $order, string $html
         '{{I_N, A}}'                       => $fromMotor('I_N, A'),
         '{{I_A, A}}'                       => $fromMotor('I_A, A'),
         '{{cos}}'                          => $fromMotor('cos') ?: $fromMotor('cos φ'),
-        '{{Номинальная скорость, об/мин}}' => $fromMotor('Номинальная скорость, об/мин'),
+        '{{nom speed}}'                    => $fromMotor('nom speed'),
         '{{Высоковольтные испытания [kV]}}' => $fromMotor('Высоковольтные испытания [kV]'),
         '{{Холостой ток авт. выкл., A}}'   => $fromMotor('Холостой ток авт. выкл., A'),
     ];
