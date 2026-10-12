@@ -533,34 +533,46 @@ function pdf_article_marks(string $path): array
             continue;
         }
         $count = count($words);
+        $markY = null;
+        $article = '';
+
         for ($k = 0; $k < $count; $k++) {
-            if ($words[$k][2] !== 'article') {
-                continue;   // нужна именно строчная строка
-            }
-            $next = $words[$k + 1][2] ?? '';
-            if (mb_strtolower($next, 'UTF-8') === 'number') {
+            $word = $words[$k][2];
+
+            // строка-маркер выглядит как «pos 2»: слово pos и число за ним
+            if ($markY === null && mb_strtolower($word, 'UTF-8') === 'pos') {
+                $num = $words[$k + 1][2] ?? '';
+                if (preg_match('/^\d+$/', $num)) {
+                    $markY = (float) $words[$k][1];
+                }
                 continue;
             }
-            // артикул — это следующие слова до конца строки
-            $article = trim($next);
-            for ($m = $k + 2; $m < $count && $m < $k + 5; $m++) {
-                $candidate = trim($article . ' ' . $words[$m][2]);
-                if (mb_strlen($candidate, 'UTF-8') > 24) {
-                    break;
-                }
-                $article = $candidate;
-                if (preg_match('/\d/u', $words[$m][2])) {
-                    break;
+
+            // артикул — в строке «article», она идёт сразу за маркером
+            if ($article === '' && $word === 'article') {
+                $next = $words[$k + 1][2] ?? '';
+                if ($next !== '' && mb_strtolower($next, 'UTF-8') !== 'number') {
+                    $article = trim($next);
+                    for ($m = $k + 2; $m < $count && $m < $k + 5; $m++) {
+                        $candidate = trim($article . ' ' . $words[$m][2]);
+                        if (mb_strlen($candidate, 'UTF-8') > 24) {
+                            break;
+                        }
+                        $article = $candidate;
+                        if (preg_match('/\d/u', $words[$m][2])) {
+                            break;
+                        }
+                    }
                 }
             }
-            if ($article !== '') {
-                $out['marks'][] = [
-                    'page'    => $no,
-                    'y'       => (float) $words[$k][1],
-                    'article' => $article,
-                ];
-            }
-            break;   // на странице достаточно одной строки
+        }
+
+        if ($markY !== null || $article !== '') {
+            $out['marks'][] = [
+                'page'    => $no,
+                'y'       => $markY,
+                'article' => $article,
+            ];
         }
     }
     return $out;
@@ -661,6 +673,7 @@ function htm_split_articles(string $content): array
     }
 
     $marks = [];
+    $prevIsPos = false;
     foreach ($rows[1] as $row) {
         if (!preg_match_all('#<td[^>]*>(.*?)(?=<td|</tr>|$)#is', $row[0], $cells)) {
             continue;
@@ -673,9 +686,34 @@ function htm_split_articles(string $content): array
                 $vals[] = $v;
             }
         }
-        if (count($vals) >= 2 && mb_strtolower($vals[0], 'UTF-8') === 'article') {
-            $marks[] = ['article' => $vals[1], 'start' => (int) $row[1]];
+        if ($vals === []) {
+            continue;
         }
+
+        // строка-маркер «pos 1» идёт перед строкой «article» и относится
+        // к следующему изделию, поэтому блок начинается с неё
+        if (preg_match('/^pos\s+\d+$/i', $vals[0])) {
+            $prevIsPos = true;
+            continue;
+        }
+
+        if (count($vals) >= 2 && mb_strtolower($vals[0], 'UTF-8') === 'article') {
+            $start = (int) $row[1];
+            // Строка-маркер «pos 2» относится к следующему изделию и набрана
+            // жирным в своей обёртке: <span ...><b>pos   2</b>... Блок
+            // начинается с неё, поэтому ищем её чуть выше строки article.
+            $headFrom = max(0, $start - 900);
+            $head = substr($content, $headFrom, min(900, $start));
+            if (preg_match_all('#<b>\s*pos\s+\d+\s*</b>#i', $head, $pm, PREG_OFFSET_CAPTURE)) {
+                $last = end($pm[0]);
+                $back = strrpos(substr($head, 0, (int) $last[1]), '<span');
+                if ($back !== false) {
+                    $start = $headFrom + $back;
+                }
+            }
+            $marks[] = ['article' => $vals[1], 'start' => $start];
+        }
+        $prevIsPos = false;
     }
     if (count($marks) < 2) {
         return $result;
