@@ -389,6 +389,18 @@ function passport_values(array $chars, array $rules, string $order, string $html
     $serP = htm_serial_by_mask($plain, 'MD');
     $serM = htm_serial_by_mask($plain, 'MM');
 
+    // Взрывозащита длинная и не помещается в ячейку. По правилу её часть
+    // после «;» уходит в отдельный плейсхолдер ниже; если делить нечего,
+    // второй плейсхолдер просто затирается пустым значением.
+    $explosion = trim((string) ($chars['Explosion protection']['desc'] ?? ''));
+    $explosionMain = $explosion;
+    $explosionRest = '';
+    $semi = mb_strpos($explosion, ';');
+    if ($semi !== false) {
+        $explosionMain = trim(mb_substr($explosion, 0, $semi));
+        $explosionRest = trim(mb_substr($explosion, $semi + 1));
+    }
+
     // скорость: 45 -> 45,0
     $speed = $speedCode;
     if ($speed !== '' && !str_contains($speed, ',') && !str_contains($speed, '.')) {
@@ -417,7 +429,8 @@ function passport_values(array $chars, array $rules, string $order, string $html
         '{{Insulation class}}'             => $chars['Insulation class']['code'] ?? '',
         '{{Corrosion protection}}'         => $corr,
         '{{Colour}}'                       => $chars['Colour']['code'] ?? '',
-        '{{Explosion protection}}'         => $chars['Explosion protection']['desc'] ?? '',
+        '{{Explosion protection}}'         => $explosionMain,
+        '{{Explosion protection2}}'        => $explosionRest,
         '{{serial number-p}}'              => $serP[0] ?? '',
         '{{serial number-m}}'              => $serM[0] ?? '',
         '{{Set to CLOSE (Nm)}}'            => $close,
@@ -435,7 +448,7 @@ function passport_values(array $chars, array $rules, string $order, string $html
         '{{Режим работы1}}'                => $fromMotor('Режим работы1'),
         '{{I_N, A}}'                       => $fromMotor('I_N, A'),
         '{{I_A, A}}'                       => $fromMotor('I_A, A'),
-        '{{cos φ}}'                        => $fromMotor('cos φ'),
+        '{{cos}}'                          => $fromMotor('cos') ?: $fromMotor('cos φ'),
         '{{Номинальная скорость, об/мин}}' => $fromMotor('Номинальная скорость, об/мин'),
         '{{Высоковольтные испытания [kV]}}' => $fromMotor('Высоковольтные испытания [kV]'),
         '{{Холостой ток авт. выкл., A}}'   => $fromMotor('Холостой ток авт. выкл., A'),
@@ -590,7 +603,17 @@ function pdf_find_placeholder(string $stream, string $name): array
                 continue;   // пустые литералы пропускаем
             }
             $at = strpos($name, $text, $pos);
-            if ($at === false || preg_match('/[A-Za-z0-9]/u', substr($name, $pos, $at - $pos))) {
+            // Пропуск в имени — это символы, набранные глифами. Обычно там
+            // кириллица («{{Режим работы1}}»), но «{{Article}}» на обложке
+            // паспорта собран по буквам, и между латинскими кусками
+            // попадаются отдельные буквы. Поэтому пропуск допускаем, если
+            // он короткий или не содержит латиницы с цифрами.
+            if ($at === false) {
+                $parts = [];
+                break;
+            }
+            $gap = substr($name, $pos, $at - $pos);
+            if (mb_strlen($gap, 'UTF-8') > 3 && preg_match('/[A-Za-z0-9]/', $gap)) {
                 $parts = [];    // следующий кусок не подошёл — это не наш случай
                 break;
             }
@@ -658,13 +681,25 @@ function pdf_glyph_fonts(string $qdf): array
             }
             $fontNum = (string) $m2[1];
 
+            // Identity-H значит, что строка набрана двухбайтовыми номерами
+            // глифов; у обычного шрифта это просто коды символов, и туда
+            // можно писать текст литералом
+            $identity = false;
+            $fpos = strpos($qdf, $fontNum . ' 0 obj');
+            if ($fpos !== false) {
+                $fend = strpos($qdf, 'endobj', $fpos);
+                if ($fend !== false) {
+                    $identity = str_contains(substr($qdf, $fpos, $fend - $fpos), 'Identity-H');
+                }
+            }
+
             // имена ресурсов, которые ссылаются на этот шрифтовой объект
             $off3 = 0;
             while (($q = strpos($qdf, $fontNum . ' 0 R', $off3)) !== false) {
                 $off3 = $q + 1;
                 $before = substr($qdf, max(0, $q - 40), min(40, $q));
                 if (preg_match('#/([A-Za-z0-9]+)\s*$#', $before, $m3)) {
-                    $fonts[$m3[1]] = $map;
+                    $fonts[$m3[1]] = ['map' => $map, 'identity' => $identity];
                 }
             }
         }
@@ -911,23 +946,44 @@ function passport_replace_in_stream(
                     ? substr($stream, $bodyStart, $bodyEnd - $bodyStart)
                     : $stream;
 
-                foreach ($fonts as $fontName => $fontMap) {
+                // сначала пробуем обычные шрифты: в них значение пишется
+                // текстом и отобразится при любом наборе глифов
+                $candidates = [];
+                foreach ($fonts as $fontName => $info) {
                     if ($fontName === $tf['name']
                         || !preg_match('#/' . preg_quote($fontName, '#') . '\s+[\d.]+\s+Tf#', $body)
                     ) {
                         continue;
                     }
-                    $other = pdf_encode_glyphs($value, $fontMap);
-                    if ($other === null) {
-                        continue;
+                    $candidates[] = [$fontName, $info];
+                }
+                usort(
+                    $candidates,
+                    static fn(array $a, array $b): int
+                        => (int) !empty($a[1]['identity']) <=> (int) !empty($b[1]['identity'])
+                );
+
+                foreach ($candidates as [$fontName, $info]) {
+                    if (!empty($info['identity'])) {
+                        // двухбайтовые номера глифов: цифр в подмножестве
+                        // может и не быть
+                        $other = pdf_encode_glyphs($value, $info['map'] ?? []);
+                        if ($other === null) {
+                            continue;
+                        }
+                        $text = '<' . $other . '>';
+                    } else {
+                        // обычный шрифт — пишем значение текстом
+                        $text = '(' . pdf_escape($value) . ')';
                     }
+
                     $found[$name] = ($found[$name] ?? 0) + 1;
                     $edits[] = [
                         'start' => $tf['start'],
                         'len'   => $tf['len'],
                         'text'  => '/' . $fontName . ' ' . $tf['size'] . ' Tf',
                     ];
-                    $edits[] = ['start' => $g['start'], 'len' => $g['len'], 'text' => '<' . $other . '>'];
+                    $edits[] = ['start' => $g['start'], 'len' => $g['len'], 'text' => $text];
                     break;
                 }
             }
