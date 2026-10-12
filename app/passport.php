@@ -373,11 +373,11 @@ function passport_values(array $chars, array $rules, string $order, string $html
         $heater = str_replace(' ', '', substr($heaterDesc, 0, $pos + 2));
     }
 
-    // датчик положения: первые три слова описания плюс « 30.4»
+    // датчик положения: первые три слова описания
     $posDesc = $chars['Position transmitter']['desc'] ?? '';
     $posWords = preg_split('/\s+/u', trim($posDesc)) ?: [];
     $posTransmitter = count($posWords) >= 3
-        ? implode(' ', array_slice($posWords, 0, 3)) . ' 30.4'
+        ? implode(' ', array_slice($posWords, 0, 3))
         : trim($posDesc);
 
     // моменты
@@ -390,15 +390,15 @@ function passport_values(array $chars, array $rules, string $order, string $html
     $serM = htm_serial_by_mask($plain, 'MM');
 
     // Взрывозащита длинная и не помещается в ячейку. По правилу её часть
-    // после «;» уходит в отдельный плейсхолдер ниже; если делить нечего,
-    // второй плейсхолдер просто затирается пустым значением.
+    // начиная с «RU» уходит в отдельный плейсхолдер ниже вместе с «RU»;
+    // если делить нечего, второй плейсхолдер затирается пустым значением.
     $explosion = trim((string) ($chars['Explosion protection']['desc'] ?? ''));
     $explosionMain = $explosion;
     $explosionRest = '';
-    $semi = mb_strpos($explosion, ';');
-    if ($semi !== false) {
-        $explosionMain = trim(mb_substr($explosion, 0, $semi));
-        $explosionRest = trim(mb_substr($explosion, $semi + 1));
+    $ruPos = mb_strpos($explosion, 'RU');
+    if ($ruPos !== false && $ruPos > 0) {
+        $explosionMain = trim(mb_substr($explosion, 0, $ruPos));
+        $explosionRest = trim(mb_substr($explosion, $ruPos));
     }
 
     // скорость: 45 -> 45,0
