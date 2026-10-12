@@ -459,6 +459,189 @@ function htm_split_positions(string $content): array
 }
 
 /* ------------------------------------------------------------------ */
+/* Деление отчётов другого вида по изделиям                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Страницы, с которых начинаются изделия, когда пометок Pos. нет.
+ *
+ * В отчётах другого вида заказ перечисляет изделия блоками: у каждого
+ * своя строка «article» (со строчной буквы), и блок начинается
+ * с новой страницы. Строку «Article number :» пропускаем.
+ *
+ * @return array<int, array{page:int, article:string}>
+ */
+function pdf_article_pages(string $path): array
+{
+    if (!pdf_tools_available() || !is_file($path)) {
+        return [];
+    }
+    $text = (string) @shell_exec('pdftotext -layout ' . escapeshellarg($path) . ' - 2>/dev/null');
+    if (trim($text) === '') {
+        return [];
+    }
+
+    $out = [];
+    foreach (explode("\f", $text) as $i => $page) {
+        if (preg_match('/^[ \t]*article[ \t]+(?!number\b)(.+?)[ \t]*$/im', $page, $m)) {
+            $article = trim($m[1]);
+            if ($article !== '') {
+                $out[] = ['page' => $i + 1, 'article' => $article];
+            }
+        }
+    }
+    return $out;
+}
+
+/** Хвост имени файла из артикула. */
+function article_suffix(string $article): string
+{
+    return trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $article), '_');
+}
+
+/**
+ * Разложить PDF по изделиям: каждому достаются его страницы.
+ *
+ * @return array{articles:string[], parts:array<int, array{suffix:string, article:string, content:string}>}
+ */
+function pdf_split_articles(string $content): array
+{
+    $result = ['articles' => [], 'parts' => []];
+    if (!pdf_tools_available() || $content === '') {
+        return $result;
+    }
+
+    $tmp = tempnam(sys_get_temp_dir(), 'auma_art_');
+    if ($tmp === false) {
+        return $result;
+    }
+    @unlink($tmp);
+    $tmp .= '.pdf';
+    file_put_contents($tmp, $content);
+
+    try {
+        $marks = pdf_article_pages($tmp);
+        if (count($marks) < 2) {
+            return $result;   // одно изделие — делить нечего
+        }
+
+        $info = pdf_outline($tmp);
+        $total = max(1, (int) ($info['pages'] ?? 0));
+        $count = count($marks);
+        $stem = substr($tmp, 0, -4);
+
+        foreach ($marks as $i => $mark) {
+            $article = (string) $mark['article'];
+            if ($article !== '' && !in_array($article, $result['articles'], true)) {
+                $result['articles'][] = $article;
+            }
+
+            $from = (int) $mark['page'];
+            $to = ($i + 1 < $count) ? (int) $marks[$i + 1]['page'] - 1 : $total;
+            if ($to < $from) {
+                $to = $from;
+            }
+
+            $partFile = $stem . '_art' . $i . '.pdf';
+            if (!pdf_extract_pages($tmp, $from, $to, $partFile)) {
+                continue;
+            }
+            $result['parts'][] = [
+                'suffix'  => article_suffix($article),
+                'article' => $article,
+                'content' => (string) file_get_contents($partFile),
+            ];
+            @unlink($partFile);
+        }
+    } finally {
+        @unlink($tmp);
+    }
+
+    return $result;
+}
+
+/**
+ * Разложить htm по изделиям: блок начинается со строки «article».
+ *
+ * @return array{articles:string[], parts:array<int, array{suffix:string, article:string, content:string}>}
+ */
+function htm_split_articles(string $content): array
+{
+    $result = ['articles' => [], 'parts' => []];
+    if ($content === '') {
+        return $result;
+    }
+
+    if (!preg_match_all('#<tr[^>]*>(.*?)</tr>#is', $content, $rows, PREG_OFFSET_CAPTURE)) {
+        return $result;
+    }
+
+    $marks = [];
+    foreach ($rows[1] as $row) {
+        if (!preg_match_all('#<td[^>]*>(.*?)(?=<td|</tr>|$)#is', $row[0], $cells)) {
+            continue;
+        }
+        $vals = [];
+        foreach ($cells[1] as $cell) {
+            $v = html_entity_decode((string) preg_replace('#<[^>]+>#', ' ', $cell), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $v = trim((string) preg_replace('/\s+/u', ' ', $v));
+            if ($v !== '') {
+                $vals[] = $v;
+            }
+        }
+        if (count($vals) >= 2 && mb_strtolower($vals[0], 'UTF-8') === 'article') {
+            $marks[] = ['article' => $vals[1], 'start' => (int) $row[1]];
+        }
+    }
+    if (count($marks) < 2) {
+        return $result;
+    }
+
+    $styleLink = '';
+    if (preg_match('#<LINK\b[^>]*>#i', $content, $sm)) {
+        $styleLink = $sm[0];
+    }
+    $orderLine = '';
+    if (preg_match('#<span[^>]*>\s*<b>\s*Order:.*?</span>#is', $content, $om)) {
+        $orderLine = $om[0];
+    }
+
+    $total = strlen($content);
+    $count = count($marks);
+
+    foreach ($marks as $i => $mark) {
+        $article = (string) $mark['article'];
+        if ($article !== '' && !in_array($article, $result['articles'], true)) {
+            $result['articles'][] = $article;
+        }
+
+        $end = ($i + 1 < $count) ? (int) $marks[$i + 1]['start'] : $total;
+        $start = strrpos(substr($content, 0, (int) $mark['start']), '<tr');
+        if ($start === false) {
+            $start = (int) $mark['start'];
+        }
+        $fragment = trim(substr($content, $start, $end - $start));
+        if ($fragment === '') {
+            continue;
+        }
+
+        $result['parts'][] = [
+            'suffix'  => article_suffix($article),
+            'article' => $article,
+            'content' => '<html><head><meta charset="utf-8">'
+                . '<title>' . htmlspecialchars($article, ENT_QUOTES, 'UTF-8') . '</title>'
+                . $styleLink
+                . '</head><body text="#000000" bgColor="#ffffff" leftMargin="6" topMargin="0">'
+                . $orderLine
+                . '<span style="display:block; margin:15px">' . $fragment . '</span>'
+                . '</body></html>',
+        ];
+    }
+
+    return $result;
+}
+
+/* ------------------------------------------------------------------ */
 /* Разбор PDF по позициям                                              */
 /* ------------------------------------------------------------------ */
 

@@ -331,6 +331,16 @@ function ru_half(string $value): string
  */
 function passport_values(array $chars, array $rules, string $order, string $html = ''): array
 {
+    // В отчётах другого вида названия строк пишут со строчной буквы
+    // («article» вместо «Article»), поэтому добавляем каждой строке
+    // псевдоним в нижнем регистре и дальше ищем по нему.
+    foreach ($chars as $key => $cell) {
+        $low = mb_strtolower((string) $key, 'UTF-8');
+        if (!array_key_exists($low, $chars)) {
+            $chars[$low] = $cell;
+        }
+    }
+
     // ключ для справочника двигателей: код мотора + код скорости
     $motorCode = $chars['Motor']['code'] ?? '';
     $speedCode = $chars['Output speed']['code'] ?? '';
@@ -416,7 +426,7 @@ function passport_values(array $chars, array $rules, string $order, string $html
     // частные вычисления по плейсхолдеру
     $special = [
         '{{Order}}'                        => $order,
-        '{{Article}}'                      => str_replace('-', ' ', $chars['Article']['code'] ?? ''),
+        '{{Article}}'                      => str_replace('-', ' ', $chars['article']['code'] ?? $chars['Article']['code'] ?? ''),
         '{{Mains voltage}}'                => $voltsDesc,
         '{{Mains voltage3}}'               => $typeOfCurrent,
         '{{Mains voltage380}}'             => $voltFirst,

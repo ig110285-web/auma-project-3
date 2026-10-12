@@ -403,9 +403,20 @@ function api_fetch_characteristics(): void
     // Тогда в артикул полного файла пишем все изделия через подчёркивание,
     // а дополнительные позиции сохраняем отдельными документами:
     // у PDF это вырезанные страницы, у htm — вырезанная разметка.
+    //
+    // У отчётов другого вида пометок Pos. нет — там изделия перечислены
+    // блоками со своей строкой «article», и делим по ним.
     $split = $format === 'pdf'
         ? pdf_split_positions($file['content'])
         : htm_split_positions($file['content']);
+
+    $byArticle = false;
+    if ($split['parts'] === []) {
+        $split = $format === 'pdf'
+            ? pdf_split_articles($file['content'])
+            : htm_split_articles($file['content']);
+        $byArticle = $split['parts'] !== [];
+    }
 
     if ($split['articles'] !== []) {
         $article = implode('_', $split['articles']);
@@ -423,21 +434,27 @@ function api_fetch_characteristics(): void
         'title'      => 'Характеристики ' . $order,
     ]);
 
-    // отдельные документы по дополнительным позициям
+    // отдельные документы по позициям или по изделиям
     $stem = (string) pathinfo($file['filename'], PATHINFO_FILENAME);
     $ext = (string) pathinfo($file['filename'], PATHINFO_EXTENSION);
     $ext = $ext !== '' ? '.' . $ext : '';
     $parts = [];
     foreach ($split['parts'] as $part) {
-        $suffix = str_replace('.', '_', $part['pos']);
-        $parts[] = doc_store($user, $part['content'], $stem . '_pos' . $suffix . $ext, [
+        if ($byArticle) {
+            $suffix = '_' . $part['suffix'];
+            $title = 'Характеристики ' . $order . ' — ' . $part['article'];
+        } else {
+            $suffix = '_pos' . str_replace('.', '_', (string) $part['pos']);
+            $title = 'Характеристики ' . $order . ' — Pos. ' . $part['pos'];
+        }
+        $parts[] = doc_store($user, $part['content'], $stem . $suffix . $ext, [
             'order_no'   => $order,
             'article'    => $part['article'],
             'doc_type'   => 'characteristics',
             'lang'       => 'en',
             'mime'       => $file['mime'],
             'source_url' => $file['url'],
-            'title'      => 'Характеристики ' . $order . ' — Pos. ' . $part['pos'],
+            'title'      => $title,
         ]);
     }
 
