@@ -493,6 +493,79 @@ function pdf_article_pages(string $path): array
     return $out;
 }
 
+/**
+ * Где именно на страницах стоят строки «article» — с координатой.
+ *
+ * Нужна та же аккуратность, что и с позициями: блок изделия может
+ * перейти на следующую страницу, и тогда на одной странице окажется
+ * хвост одного изделия и начало другого. Режем по координате строки.
+ *
+ * Ищем слово «article» именно в нижнем регистре: строка «Article
+ * number :» из раздела двигателя набрана с заглавной и не подходит.
+ *
+ * @return array{pages:array<int, array{w:float, h:float}>, marks:array<int, array{page:int, y:float, article:string}>}
+ */
+function pdf_article_marks(string $path): array
+{
+    $out = ['pages' => [], 'marks' => []];
+    if (!pdf_tools_available() || !is_file($path)) {
+        return $out;
+    }
+    $xml = (string) @shell_exec('pdftotext -bbox ' . escapeshellarg($path) . ' - 2>/dev/null');
+    if (trim($xml) === '') {
+        return $out;
+    }
+    if (!preg_match_all('#<page width="([\d.]+)" height="([\d.]+)">(.*?)</page>#s', $xml, $pages, PREG_SET_ORDER)) {
+        return $out;
+    }
+
+    foreach ($pages as $i => $page) {
+        $no = $i + 1;
+        $out['pages'][$no] = ['w' => (float) $page[1], 'h' => (float) $page[2]];
+
+        // слова страницы по порядку
+        if (!preg_match_all(
+            '#<word xMin="[\d.]+" yMin="([\d.]+)" xMax="[\d.]+" yMax="[\d.]+">([^<]*)</word>#',
+            $page[3],
+            $words,
+            PREG_SET_ORDER
+        )) {
+            continue;
+        }
+        $count = count($words);
+        for ($k = 0; $k < $count; $k++) {
+            if ($words[$k][2] !== 'article') {
+                continue;   // нужна именно строчная строка
+            }
+            $next = $words[$k + 1][2] ?? '';
+            if (mb_strtolower($next, 'UTF-8') === 'number') {
+                continue;
+            }
+            // артикул — это следующие слова до конца строки
+            $article = trim($next);
+            for ($m = $k + 2; $m < $count && $m < $k + 5; $m++) {
+                $candidate = trim($article . ' ' . $words[$m][2]);
+                if (mb_strlen($candidate, 'UTF-8') > 24) {
+                    break;
+                }
+                $article = $candidate;
+                if (preg_match('/\d/u', $words[$m][2])) {
+                    break;
+                }
+            }
+            if ($article !== '') {
+                $out['marks'][] = [
+                    'page'    => $no,
+                    'y'       => (float) $words[$k][1],
+                    'article' => $article,
+                ];
+            }
+            break;   // на странице достаточно одной строки
+        }
+    }
+    return $out;
+}
+
 /** Хвост имени файла из артикула. */
 function article_suffix(string $article): string
 {
@@ -501,6 +574,9 @@ function article_suffix(string $article): string
 
 /**
  * Разложить PDF по изделиям: каждому достаются его страницы.
+ *
+ * Хвост предыдущего изделия отрезается, начало поднимается к верхнему
+ * краю — так же, как при делении по позициям.
  *
  * @return array{articles:string[], parts:array<int, array{suffix:string, article:string, content:string}>}
  */
@@ -520,7 +596,8 @@ function pdf_split_articles(string $content): array
     file_put_contents($tmp, $content);
 
     try {
-        $marks = pdf_article_pages($tmp);
+        $geometry = pdf_article_marks($tmp);
+        $marks = $geometry['marks'];
         if (count($marks) < 2) {
             return $result;   // одно изделие — делить нечего
         }
@@ -537,13 +614,20 @@ function pdf_split_articles(string $content): array
             }
 
             $from = (int) $mark['page'];
-            $to = ($i + 1 < $count) ? (int) $marks[$i + 1]['page'] - 1 : $total;
+            $next = $marks[$i + 1] ?? null;
+            $to = $next !== null ? (int) $next['page'] : $total;
             if ($to < $from) {
                 $to = $from;
             }
 
+            // 3 точки запаса, чтобы не срезать саму строку «article»
+            $headCut = $i > 0 ? max(0.0, (float) $mark['y'] - 3) : null;
+            $tailCut = ($next !== null && (int) $next['page'] === $to)
+                ? max(0.0, (float) $next['y'] - 3)
+                : null;
+
             $partFile = $stem . '_art' . $i . '.pdf';
-            if (!pdf_extract_pages($tmp, $from, $to, $partFile)) {
+            if (!pdf_assemble_pages($tmp, $from, $to, $headCut, $tailCut, $geometry, $partFile)) {
                 continue;
             }
             $result['parts'][] = [
