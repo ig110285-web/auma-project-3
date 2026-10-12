@@ -698,17 +698,27 @@ function htm_split_articles(string $content): array
         }
 
         if (count($vals) >= 2 && mb_strtolower($vals[0], 'UTF-8') === 'article') {
-            $start = (int) $row[1];
+            // По умолчанию блок начинается со своей строки article,
+            // то есть с открывающего тега этой строки.
+            $rowStart = (int) $row[1];
+            $start = $rowStart;
+            $back = strrpos(substr($content, 0, $rowStart), '<tr');
+            if ($back !== false) {
+                $start = $back;
+            }
+
             // Строка-маркер «pos 2» относится к следующему изделию и набрана
             // жирным в своей обёртке: <span ...><b>pos   2</b>... Блок
-            // начинается с неё, поэтому ищем её чуть выше строки article.
-            $headFrom = max(0, $start - 900);
-            $head = substr($content, $headFrom, min(900, $start));
+            // начинается с неё — и на этом граница заканчивается, больше
+            // назад отступать нельзя, иначе в кусок попадёт последняя
+            // строка предыдущего изделия.
+            $headFrom = max(0, $rowStart - 900);
+            $head = substr($content, $headFrom, min(900, $rowStart));
             if (preg_match_all('#<b>\s*pos\s+\d+\s*</b>#i', $head, $pm, PREG_OFFSET_CAPTURE)) {
                 $last = end($pm[0]);
-                $back = strrpos(substr($head, 0, (int) $last[1]), '<span');
-                if ($back !== false) {
-                    $start = $headFrom + $back;
+                $span = strrpos(substr($head, 0, (int) $last[1]), '<span');
+                if ($span !== false) {
+                    $start = $headFrom + $span;
                 }
             }
             $marks[] = ['article' => $vals[1], 'start' => $start];
@@ -738,10 +748,9 @@ function htm_split_articles(string $content): array
         }
 
         $end = ($i + 1 < $count) ? (int) $marks[$i + 1]['start'] : $total;
-        $start = strrpos(substr($content, 0, (int) $mark['start']), '<tr');
-        if ($start === false) {
-            $start = (int) $mark['start'];
-        }
+        // start уже посчитан при разборе строк: либо обёртка вокруг
+        // «pos N», либо тег строки article. Второй раз отступать нельзя.
+        $start = (int) $mark['start'];
         $fragment = trim(substr($content, $start, $end - $start));
         if ($fragment === '') {
             continue;
