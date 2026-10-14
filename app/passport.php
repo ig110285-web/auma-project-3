@@ -223,6 +223,165 @@ function motor_column(array $names, array $candidates)
     return null;
 }
 
+/**
+ * Справочник двигателей: файл главный, база — копия.
+ *
+ * Человек правит AUMA-motor.xlsx, как привык. Сайт при первом обращении
+ * считает контрольную сумму файла и, если она изменилась, сам переливает
+ * справочник в таблицу motors — шаг «перелить» вручную не нужен.
+ * Дальше поиск идёт по базе, а не разбором книги.
+ *
+ * Если базы нет, таблица пуста или перелив не удался, чтение падает
+ * обратно на разбор файла — как было раньше. Сломаться нечему.
+ */
+
+/** Соответствие: колонка в файле => колонка в таблице. */
+function motors_columns(): array
+{
+    return [
+        'moto.speed'      => 'moto_speed',
+        'tip'             => 'tip',
+        'v.speed'         => 'v_speed',
+        'max.nm'          => 'max_nm',
+        'motor'           => 'motor',
+        'nom.power.kvt'   => 'nom_power',
+        'speed.rpm'       => 'speed_rpm',
+        'nom.tok.a'       => 'nom_tok',
+        'max.tok.a'       => 'max_tok',
+        'pysk.tok.a'      => 'pysk_tok',
+        'cos'             => 'cos',
+        'tok.off.a'       => 'tok_off',
+        'kontaktor'       => 'kontaktor',
+        'tiristor'        => 'tiristor',
+        'operating.mode'  => 'oper_mode',
+        'voltage'         => 'voltage',
+        'tok.holost.hoda' => 'tok_holost',
+        'high.v.test.kvt' => 'high_v_test',
+    ];
+}
+
+/** Создать таблицы справочника, если их ещё нет. */
+function motors_tables_ensure(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $cols = [];
+    foreach (motors_columns() as $tableCol) {
+        $cols[] = $tableCol . ' VARCHAR(48) NULL';
+    }
+    db_exec('CREATE TABLE IF NOT EXISTS motors (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ' . implode(",\n        ", $cols) . ',
+        UNIQUE KEY uk_moto_speed (moto_speed)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+    db_exec('CREATE TABLE IF NOT EXISTS sync_meta (
+        name VARCHAR(64) PRIMARY KEY,
+        checksum CHAR(32) NULL,
+        row_count INT NULL,
+        synced DATETIME NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+}
+
+/**
+ * Перелить справочник из файла в таблицу, если файл изменился.
+ * Возвращает число перелитых строк (0 — перелив не потребовался).
+ */
+function motors_sync(bool $force = false): int
+{
+    $file = passport_motor_file();
+    if (!is_file($file)) {
+        return 0;
+    }
+    motors_tables_ensure();
+
+    $sum = md5_file($file) ?: '';
+    if (!$force) {
+        $meta = db_one('SELECT checksum FROM sync_meta WHERE name = ?', ['motors']);
+        if ($meta && (string) $meta['checksum'] === $sum) {
+            return 0;
+        }
+    }
+
+    $cols = motors_columns();
+    $map = [];
+    foreach (xlsx_header(xlsx_rows($file, 0)) as $c => $n) {
+        $map[trim((string) $n)] = $c;
+    }
+    if (!isset($map['moto.speed'])) {
+        return 0;
+    }
+
+    $data = [];
+    foreach (array_slice(xlsx_rows($file, 0), 1, null, true) as $row) {
+        $key = trim((string) ($row[$map['moto.speed']] ?? ''));
+        if ($key === '') {
+            continue;
+        }
+        $rec = [];
+        foreach ($cols as $fileCol => $tableCol) {
+            $v = isset($map[$fileCol]) ? ($row[$map[$fileCol]] ?? '') : '';
+            if (is_float($v)) {
+                $v = rtrim(rtrim(number_format($v, 10, '.', ''), '0'), '.');
+            }
+            $rec[$tableCol] = trim((string) $v);
+        }
+        $data[$key] = $rec;
+    }
+
+    // защита от битого файла: старая копия остаётся целой
+    if (count($data) < 100) {
+        return 0;
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    db_exec('DELETE FROM motors');
+    $names = array_values($cols);
+    $st = $pdo->prepare('INSERT INTO motors (' . implode(', ', $names) . ') VALUES ('
+        . implode(', ', array_fill(0, count($names), '?')) . ')');
+    foreach ($data as $rec) {
+        $st->execute(array_values($rec));
+    }
+    $pdo->commit();
+
+    db_exec('INSERT INTO sync_meta (name, checksum, row_count, synced) VALUES (?,?,?,?)
+             ON DUPLICATE KEY UPDATE checksum = VALUES(checksum),
+             row_count = VALUES(row_count), synced = VALUES(synced)',
+            ['motors', $sum, count($data), now()]);
+
+    return count($data);
+}
+
+/** Справочник из таблицы: ключ => строка, ключи названы как в файле. */
+function motor_index_from_db(): array
+{
+    $index = [];
+    $cols = motors_columns();
+    motors_sync();
+    foreach (db_query('SELECT * FROM motors') as $row) {
+        $assoc = [];
+        foreach ($cols as $fileCol => $tableCol) {
+            $assoc[$fileCol] = (string) ($row[$tableCol] ?? '');
+        }
+        $key = $assoc['moto.speed'];
+        if ($key === '') {
+            continue;
+        }
+        $index[$key] = $assoc;
+        // разделитель дробной части в отчёте и справочнике может отличаться
+        $alt = strpos($key, ',') !== false
+            ? str_replace(',', '.', $key)
+            : str_replace('.', ',', $key);
+        if ($alt !== $key && !isset($index[$alt])) {
+            $index[$alt] = $assoc;
+        }
+    }
+    return $index;
+}
+
 /** Справочник двигателей: ключ «мотор-скорость» => строка таблицы. */
 function motor_index(): array
 {
@@ -231,6 +390,17 @@ function motor_index(): array
         return $index;
     }
 
+    // 1. База. Файл переливается в неё сам, если изменился.
+    try {
+        $fromDb = motor_index_from_db();
+        if ($fromDb !== []) {
+            return $index = $fromDb;
+        }
+    } catch (Throwable $e) {
+        // база недоступна — работаем файлом
+    }
+
+    // 2. Запасной путь: разбор книги, как было раньше.
     $index = [];
     $rows = xlsx_rows(passport_motor_file(), 0);
     $header = xlsx_header($rows);
@@ -293,6 +463,27 @@ function motor_value(?array $row, string $columnName): string
     if ($row === null) {
         return '';
     }
+
+    // Строка из базы: ключи — имена колонок. Из файла — буквы столбцов.
+    if (array_key_exists('moto.speed', $row) || array_key_exists('motor', $row)) {
+        $want = trim($columnName);
+        $key = array_key_exists($want, $row) ? $want : null;
+        foreach (motor_aliases()[$want] ?? [] as $cand) {
+            if (array_key_exists($cand, $row)) {
+                $key = $cand;
+                break;
+            }
+        }
+        if ($key === null) {
+            return '';
+        }
+        $v = $row[$key];
+        if (is_float($v) || (is_string($v) && is_numeric($v))) {
+            $v = rtrim(rtrim(number_format((float) $v, 10, '.', ''), '0'), '.');
+        }
+        return trim((string) $v);
+    }
+
     if ($map === null) {
         $map = [];
         foreach (xlsx_header(xlsx_rows(passport_motor_file(), 0)) as $c => $name) {
