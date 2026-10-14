@@ -200,6 +200,8 @@ function motor_aliases(): array
         'Тиристор'                     => ['tiristor'],
         'Режим работы1'                => ['operating.mode'],
         'nom speed'                    => ['speed.rpm'],
+        'Холостой ток авт. выкл., A'    => ['tok.holost.hoda'],
+        'Высоковольтные испытания [kV]' => ['high.v.test.kvt'],
     ];
 }
 
@@ -414,13 +416,29 @@ function passport_values(array $chars, array $rules, string $order, string $html
         }
     }
 
-    // ключ для справочника двигателей: код мотора + код скорости
+    // Ключ для справочника двигателей: код мотора + код скорости.
+    // У неполнооборотных приводов (SQ, SQR) строки «Output speed» в .htm
+    // нет — скорость там задана временем поворота на 90°, и в справочнике
+    // колонка v.speed содержит именно это значение («48 seconds for 90°»
+    // даёт v.speed = 48). Поэтому берём «Operation time» как замену.
     $motorCode = $chars['Motor']['code'] ?? '';
     $speedCode = $chars['Output speed']['code'] ?? '';
+    $speedFrom = 'Output speed';
+    if ($speedCode === '') {
+        $speedCode = $chars['Operation time']['code'] ?? '';
+        $speedFrom = $speedCode === '' ? '' : 'Operation time';
+    }
     $motorKey = ($motorCode !== '' && $speedCode !== '')
         ? $motorCode . '-' . $speedCode
         : '';
     $motor = $motorKey !== '' ? (motor_index()[$motorKey] ?? null) : null;
+    if ($motor === null && $speedCode !== '') {
+        // разделитель дробной части в справочнике может быть запятой
+        $alt = str_replace('.', ',', $speedCode);
+        if ($alt !== $speedCode) {
+            $motor = motor_index()[$motorCode . '-' . $alt] ?? null;
+        }
+    }
 
     // напряжение: 380/50/3 -> 380 V 50 Hz 3-ph AC
     $volts = $chars['Mains voltage']['code'] ?? '';
