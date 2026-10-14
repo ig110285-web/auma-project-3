@@ -270,8 +270,10 @@ button { font: inherit; cursor: pointer; }
 .table tbody tr { border-top: 1px solid var(--line); }
 .table tbody tr:hover { background: #fcfdff; }
 
-.col-file { width: 30%; }
-.col-article { width: 12%; }
+/* File шире остальных: там имя файла и подпись под ним. Было 30% —
+   при коротких именах между File и Type оставалась широкая пустая полоса. */
+.col-file { width: 22%; }
+.col-article { width: 15%; }
 .col-order { width: 12%; }
 .col-size { width: 11%; }
 .col-date { width: 12%; }
