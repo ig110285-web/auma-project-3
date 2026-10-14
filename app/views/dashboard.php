@@ -223,7 +223,6 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                             </tr>
                             <tr class="filter-row">
                                 <th></th>
-                                <th><input class="f-input" data-filter="file" placeholder="фильтр"></th>
                                 <th><input class="f-input" data-filter="article" placeholder="фильтр"></th>
                                 <th><input class="f-input" data-filter="order" placeholder="фильтр"></th>
                                 <th></th>
