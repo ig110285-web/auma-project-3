@@ -175,6 +175,52 @@ function passport_source_column(string $column): string
     return stripos($column, 'Description') !== false ? 'desc' : 'code';
 }
 
+/**
+ * Соответствие «как колонка называется в паспорте» => «как она названа
+ * в новом справочнике двигателей». Новый файл назван по-английски:
+ * nom.power.kvt вместо «P_N, кВт1» и так далее. Первое совпадение
+ * выигрывает, поэтому своё имя колонки в списке идёт первым.
+ */
+function motor_aliases(): array
+{
+    return [
+        'Тип'                          => ['tip', 'Тип'],
+        'Выходная скорость, об/мин'    => ['v.speed'],
+        'Макс. крутящий момент, Н·м'   => ['max.nm'],
+        'Тип двигателя'                => ['motor'],
+        'P_N, кВт'                     => ['nom.power.kvt'],
+        'P_N, кВт1'                    => ['nom.power.kvt'],
+        'Номинальная скорость, об/мин' => ['speed.rpm'],
+        'I_N, A'                       => ['nom.tok.a'],
+        'I_max, A'                     => ['max.tok.a'],
+        'I_A, A'                       => ['pysk.tok.a'],
+        'cos'                          => ['cos'],
+        'Пусковой ток авт. выкл., A'   => ['tok.off.a'],
+        'Контактор'                    => ['kontaktor'],
+        'Тиристор'                     => ['tiristor'],
+        'Режим работы1'                => ['operating.mode'],
+        'nom speed'                    => ['speed.rpm'],
+    ];
+}
+
+/**
+ * Найти колонку по списку возможных названий (в порядке приоритета).
+ * Принимает карту в любую сторону: «колонка => имя» или «имя => колонка».
+ */
+function motor_column(array $names, array $candidates)
+{
+    foreach ($candidates as $want) {
+        if (isset($names[$want])) {
+            return $names[$want];
+        }
+        $col = array_search($want, $names, true);
+        if ($col !== false) {
+            return $col;
+        }
+    }
+    return null;
+}
+
 /** Справочник двигателей: ключ «мотор-скорость» => строка таблицы. */
 function motor_index(): array
 {
@@ -186,20 +232,26 @@ function motor_index(): array
     $index = [];
     $rows = xlsx_rows(passport_motor_file(), 0);
     $header = xlsx_header($rows);
-    $col = null;
     $names = [];
     foreach ($header as $c => $name) {
         $names[$c] = trim((string) $name);
-        if (trim((string) $name) === 'мотор-скорость') {
-            $col = $c;
-        }
-    }
-    if ($col === null) {
-        return $index;
     }
 
+    // Прежний справочник содержал готовую колонку «мотор-скорость»,
+    // новый — отдельные motor и v.speed: ключ склеиваем сами, как это
+    // делалось при сборке таблиц.
+    $colKey = array_search('мотор-скорость', $names, true);
+    $colMotor = motor_column($names, ['motor', 'Тип двигателя']);
+    $colSpeed = motor_column($names, ['v.speed', 'Выходная скорость, об/мин']);
+
     foreach (array_slice($rows, 1, null, true) as $row) {
-        $key = trim((string) ($row[$col] ?? ''));
+        if ($colKey !== false) {
+            $key = trim((string) ($row[$colKey] ?? ''));
+        } else {
+            $motor = $colMotor === null ? '' : trim((string) ($row[$colMotor] ?? ''));
+            $speed = $colSpeed === null ? '' : trim((string) ($row[$colSpeed] ?? ''));
+            $key = $motor === '' ? '' : ($speed === '' ? $motor : $motor . '-' . $speed);
+        }
         if ($key !== '') {
             $index[$key] = $row;
         }
@@ -211,6 +263,7 @@ function motor_index(): array
 function motor_value(?array $row, string $columnName): string
 {
     static $map = null;
+    static $alias = null;
     if ($row === null) {
         return '';
     }
@@ -220,9 +273,29 @@ function motor_value(?array $row, string $columnName): string
             $map[trim((string) $name)] = $c;
         }
     }
+    if ($alias === null) {
+        $alias = [];
+        foreach (motor_aliases() as $want => $candidates) {
+            $col = motor_column($map, $candidates);
+            if ($col !== null) {
+                $alias[$want] = $col;
+            }
+        }
+    }
+
     $name = trim($columnName);
-    $col = $map[$name] ?? null;
-    return $col === null ? '' : trim((string) ($row[$col] ?? ''));
+    $col = $alias[$name] ?? ($map[$name] ?? null);
+    if ($col === null) {
+        return '';
+    }
+
+    // Числа из xlsx приходят то float, то строкой и печатаются с хвостом:
+    // 1.1 превращается в 1.1000000000000001. Приводим к короткому виду.
+    $value = $row[$col] ?? '';
+    if (is_float($value) || (is_string($value) && is_numeric($value))) {
+        $value = rtrim(rtrim(number_format((float) $value, 10, '.', ''), '0'), '.');
+    }
+    return trim((string) $value);
 }
 
 /* ------------------------------------------------------------------ */
