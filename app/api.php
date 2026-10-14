@@ -211,6 +211,9 @@ function doc_public(array $r): array
         // выбранные серийные номера: по ним значки «м» и «п» красятся в зелёный
         'serial_m'    => (string) ($r['serial_m'] ?? ''),
         'serial_p'    => (string) ($r['serial_p'] ?? ''),
+        // значки «м» и «п» показываем только для типов, которые есть
+        // в колонке tip справочника двигателей
+        'has_motor_ref' => motor_type_known((string) ($r['article'] ?? '')),
         'created_at'  => $r['created_at'],
         'created_human' => date('d/m/Y', strtotime((string) $r['created_at'])),
         'download_url'=> base_path('/api/documents/' . (int) $r['id'] . '/download'),

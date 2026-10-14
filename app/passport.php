@@ -235,6 +235,61 @@ function motor_column(array $names, array $candidates)
  * обратно на разбор файла — как было раньше. Сломаться нечему.
  */
 
+/**
+ * Привести тип к сравнимому виду: «SAREX-14.2» и «SAREX 14.2» — одно и то же.
+ * Регистр, дефис и пробел значения не имеют.
+ */
+function motor_type_key(string $value): string
+{
+    $v = mb_strtoupper(trim($value), 'UTF-8');
+    $v = str_replace(['-', '–', '—', '_'], ' ', $v);
+    return trim((string) preg_replace('/\s+/u', ' ', $v));
+}
+
+/**
+ * Типы приводов из справочника двигателей — колонка tip.
+ * По ним решается, показывать ли значки серийных номеров: если типа
+ * в справочнике нет, значит и номеров для него не будет.
+ *
+ * @return array<string,bool> ключ — тип в сравнимом виде
+ */
+function motor_tips(): array
+{
+    static $tips = null;
+    if ($tips !== null) {
+        return $tips;
+    }
+    $tips = [];
+    try {
+        motors_sync();
+        foreach (db_query('SELECT DISTINCT tip FROM motors WHERE tip <> \'\'') as $row) {
+            $key = motor_type_key((string) $row['tip']);
+            if ($key !== '') {
+                $tips[$key] = true;
+            }
+        }
+    } catch (Throwable $e) {
+        // база недоступна — читаем файл
+    }
+    if ($tips === []) {
+        foreach (array_slice(xlsx_rows(passport_motor_file(), 0), 1, null, true) as $row) {
+            $tip = trim((string) ($row[0] ?? ''));
+            $key = motor_type_key($tip);
+            if ($key !== '') {
+                $tips[$key] = true;
+            }
+        }
+    }
+    return $tips;
+}
+
+/** Есть ли такой тип в справочнике двигателей. */
+function motor_type_known(string $value): bool
+{
+    $key = motor_type_key($value);
+    return $key !== '' && isset(motor_tips()[$key]);
+}
+
 /** Соответствие: колонка в файле => колонка в таблице. */
 function motors_columns(): array
 {
