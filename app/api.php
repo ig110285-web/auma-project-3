@@ -208,6 +208,9 @@ function doc_public(array $r): array
         'owner_email' => $r['owner_email'] ?? '',
         'owner_name'  => $r['owner_name'] ?? '',
         'favorite'    => (bool) $r['favorite'],
+        // выбранные серийные номера: по ним значки «м» и «п» красятся в зелёный
+        'serial_m'    => (string) ($r['serial_m'] ?? ''),
+        'serial_p'    => (string) ($r['serial_p'] ?? ''),
         'created_at'  => $r['created_at'],
         'created_human' => date('d/m/Y', strtotime((string) $r['created_at'])),
         'download_url'=> base_path('/api/documents/' . (int) $r['id'] . '/download'),

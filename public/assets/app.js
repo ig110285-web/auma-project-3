@@ -376,11 +376,8 @@ async function saveSerial(id, kind, value) {
             method: 'POST',
             body: kind === 'm' ? { m: value } : { p: value }
         });
-        const doc = state.docs.find(d => String(d.id) === String(id));
-        if (doc) {
-            if (kind === 'm') { doc.serial_m = value; } else { doc.serial_p = value; }
-        }
-        renderDocs();
+        // перечитываем список с сервера: так значки точно совпадут с базой
+        await refreshAll();
         toast(value ? 'Выбран номер ' + value : 'Выбор снят', 'ok');
     } catch (e) {
         toast('Не удалось сохранить: ' + e.message, 'err');
