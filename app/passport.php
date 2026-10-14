@@ -239,23 +239,33 @@ function motor_index(): array
         $names[$c] = trim((string) $name);
     }
 
-    // Прежний справочник содержал готовую колонку «мотор-скорость»,
-    // новый — отдельные motor и v.speed: ключ склеиваем сами, как это
-    // делалось при сборке таблиц.
-    $colKey = array_search('мотор-скорость', $names, true);
+    // Ключ строки — готовая колонка moto.speed: в ней мотор и скорость уже
+    // склеены, причём в той же записи, что в отчёте («ADXR071-4-0,40-45»).
+    // Прежнее имя «мотор-скорость» оставлено для старого справочника.
+    // Если готовой колонки нет, ключ собирается из motor и v.speed.
+    $colKey = motor_column($names, ['moto.speed', 'мотор-скорость']);
     $colMotor = motor_column($names, ['motor', 'Тип двигателя']);
     $colSpeed = motor_column($names, ['v.speed', 'Выходная скорость, об/мин']);
 
     foreach (array_slice($rows, 1, null, true) as $row) {
-        if ($colKey !== false) {
+        if ($colKey !== null) {
             $key = trim((string) ($row[$colKey] ?? ''));
         } else {
             $motor = $colMotor === null ? '' : trim((string) ($row[$colMotor] ?? ''));
             $speed = $colSpeed === null ? '' : trim((string) ($row[$colSpeed] ?? ''));
             $key = $motor === '' ? '' : ($speed === '' ? $motor : $motor . '-' . $speed);
         }
-        if ($key !== '') {
-            $index[$key] = $row;
+        if ($key === '') {
+            continue;
+        }
+        $index[$key] = $row;
+        // разделитель дробной части в отчёте и справочнике может отличаться,
+        // поэтому кладём оба написания: «…-5,6» и «…-5.6»
+        $alt = strpos($key, ',') !== false
+            ? str_replace(',', '.', $key)
+            : str_replace('.', ',', $key);
+        if ($alt !== $key && !isset($index[$alt])) {
+            $index[$alt] = $row;
         }
     }
     return $index;
