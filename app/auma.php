@@ -127,16 +127,149 @@ function auma_temp_jar(): string
     return $jar;
 }
 
+/* ------------------------------------------------------------------ */
+/* Кеш ответов AUMA                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Заказ оформлен, его характеристики на стороне AUMA не меняются.
+ * Но каждый запрос — это два-три обращения по сети и скачивание файла,
+ * то есть секунды. Поэтому ответ кладётся в базу, и все следующие
+ * обращения берут его оттуда.
+ *
+ * Если база недоступна, кеш просто не работает — запрос идёт на AUMA,
+ * как раньше. Ошибка кеша загрузку не ломает.
+ */
+
+function auma_cache_ready(): bool
+{
+    return function_exists('db_query') && function_exists('db_exec');
+}
+
+function auma_cache_ensure(): void
+{
+    static $done = false;
+    if ($done || !auma_cache_ready()) {
+        return;
+    }
+    $done = true;
+    try {
+        db_exec('CREATE TABLE IF NOT EXISTS auma_cache (
+            id       INT AUTO_INCREMENT PRIMARY KEY,
+            order_no CHAR(8) NOT NULL,
+            fmt      VARCHAR(8) NOT NULL,
+            filename VARCHAR(255) NULL,
+            mime     VARCHAR(64) NULL,
+            url      VARCHAR(512) NULL,
+            article  VARCHAR(64) NULL,
+            content  MEDIUMBLOB,
+            size     INT NULL,
+            fetched  DATETIME NULL,
+            UNIQUE KEY uk_order_fmt (order_no, fmt)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+    } catch (Throwable $e) {
+        // нет прав или базы — работаем без кеша
+    }
+}
+
+/** Ответ из кеша или null, если его там нет. */
+function auma_cache_get(string $order, string $format, bool $withContent = true): ?array
+{
+    if (!auma_cache_ready()) {
+        return null;
+    }
+    try {
+        auma_cache_ensure();
+        $cols = $withContent ? '*' : 'order_no, fmt, filename, mime, url, article, size, fetched';
+        $row = db_one('SELECT ' . $cols . ' FROM auma_cache WHERE order_no = ? AND fmt = ?',
+                      [$order, $format]);
+    } catch (Throwable $e) {
+        return null;
+    }
+    if (!$row) {
+        return null;
+    }
+    $out = [
+        'filename' => (string) $row['filename'],
+        'mime'     => (string) $row['mime'],
+        'url'      => (string) $row['url'],
+        'cached'   => true,
+    ];
+    if ($withContent) {
+        $out['content'] = (string) $row['content'];
+    }
+    if (isset($row['article'])) {
+        $out['article'] = (string) $row['article'];
+    }
+    return $out;
+}
+
+/** Положить ответ в кеш. */
+function auma_cache_put(string $order, string $format, array $res): void
+{
+    if (!auma_cache_ready()) {
+        return;
+    }
+    try {
+        auma_cache_ensure();
+        db_exec('INSERT INTO auma_cache
+                 (order_no, fmt, filename, mime, url, article, content, size, fetched)
+                 VALUES (?,?,?,?,?,?,?,?,?)
+                 ON DUPLICATE KEY UPDATE filename = VALUES(filename),
+                 mime = VALUES(mime), url = VALUES(url), article = VALUES(article),
+                 content = VALUES(content), size = VALUES(size), fetched = VALUES(fetched)',
+            [
+                $order,
+                $format,
+                (string) ($res['filename'] ?? ''),
+                (string) ($res['mime'] ?? ''),
+                (string) ($res['url'] ?? ''),
+                (string) ($res['article'] ?? ''),
+                (string) ($res['content'] ?? ''),
+                strlen((string) ($res['content'] ?? '')),
+                now(),
+            ]);
+    } catch (Throwable $e) {
+        // не смогли сохранить — не страшно, просто запросим в следующий раз
+    }
+}
+
+/** Убрать заказ из кеша — на случай, если он изменился на стороне AUMA. */
+function auma_cache_forget(string $order): void
+{
+    if (!auma_cache_ready()) {
+        return;
+    }
+    try {
+        db_exec('DELETE FROM auma_cache WHERE order_no = ?', [$order]);
+    } catch (Throwable $e) {
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Запросы к AUMA                                                      */
+/* ------------------------------------------------------------------ */
+
 /**
  * Характеристики: получить файл по номеру заказа.
  *
  * @param string $order  номер заказа, например 23080383
  * @param string $format htm | pdf
+ * @param bool   $fresh  true — запросить заново, мимо кеша
  * @return array{filename:string, content:string, mime:string, url:string}
  */
-function auma_fetch_characteristics(string $order, string $format = 'htm'): array
+function auma_fetch_characteristics(string $order, string $format = 'htm',
+                                    bool $fresh = false): array
 {
     $format = in_array($format, ['htm', 'pdf'], true) ? $format : 'htm';
+
+    if (!$fresh) {
+        $cached = auma_cache_get($order, $format);
+        if ($cached !== null && ($cached['content'] ?? '') !== '') {
+            return $cached;
+        }
+    }
+
     $jar = auma_temp_jar();
     try {
         $r = auma_http(AUMA_TDS_FORM, null, $jar, auma_headers(AUMA_PAGE_TDS));
@@ -160,12 +293,14 @@ function auma_fetch_characteristics(string $order, string $format = 'htm'): arra
         if ($r3['status'] !== 200 || $r3['body'] === '') {
             throw new AumaError('Не удалось скачать файл характеристик (HTTP ' . $r3['status'] . ')');
         }
-        return [
+        $out = [
             'filename' => basename(parse_url($link, PHP_URL_PATH) ?: ('TDS' . $order . '.' . $format)),
             'content'  => $r3['body'],
             'mime'     => $format === 'pdf' ? 'application/pdf' : 'text/html; charset=utf-8',
             'url'      => $link,
         ];
+        auma_cache_put($order, $format, $out);
+        return $out;
     } finally {
         @unlink($jar);
     }
@@ -176,8 +311,15 @@ function auma_fetch_characteristics(string $order, string $format = 'htm'): arra
  *
  * @return array{filename:string, content:string, mime:string, url:string, article:string}
  */
-function auma_fetch_scheme(string $order): array
+function auma_fetch_scheme(string $order, bool $fresh = false): array
 {
+    if (!$fresh) {
+        $cached = auma_cache_get($order, 'scheme');
+        if ($cached !== null && ($cached['content'] ?? '') !== '') {
+            return $cached;
+        }
+    }
+
     $jar = auma_temp_jar();
     try {
         $r = auma_http(AUMA_SP_FORM, null, $jar, auma_headers(AUMA_PAGE_SP));
@@ -224,13 +366,15 @@ function auma_fetch_scheme(string $order): array
         if ($r4['status'] !== 200 || $r4['body'] === '') {
             throw new AumaError('Не удалось скачать схему (HTTP ' . $r4['status'] . ')');
         }
-        return [
+        $out = [
             'filename' => rawurldecode(basename(parse_url($pdfUrl, PHP_URL_PATH) ?: 'scheme.pdf')),
             'content'  => $r4['body'],
             'mime'     => 'application/pdf',
             'url'      => $pdfUrl,
             'article'  => $article,
         ];
+        auma_cache_put($order, 'scheme', $out);
+        return $out;
     } finally {
         @unlink($jar);
     }
