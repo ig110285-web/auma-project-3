@@ -533,7 +533,7 @@ function passport_values(array $chars, array $rules, string $order, string $html
         '{{Motor-kW}}'             => $fromMotor('P_N, кВт'),
         '{{operating.mode}}'       => $fromMotor('Режим работы1'),
         '{{Type of duty}}'         => $fromMotor('Режим работы1'),
-        '{{nom.tok.an}}'           => $fromMotor('I_N, A'),
+        '{{nom.tok.a}}'            => $fromMotor('I_N, A'),
         '{{pysk.tok.a}}'           => $fromMotor('I_A, A'),
         '{{cos}}'                  => $fromMotor('cos') ?: $fromMotor('cos φ'),
         '{{speed.rpm}}'            => $fromMotor('Номинальная скорость, об/мин'),
