@@ -499,7 +499,6 @@ function passport_values(array $chars, array $rules, string $order, string $html
     // частные вычисления по плейсхолдеру
     $special = [
         '{{Order}}'                        => $order,
-        '{{Article}}'                      => str_replace('-', ' ', $chars['article']['code'] ?? $chars['Article']['code'] ?? ''),
         '{{Mains voltage}}'                => $voltsDesc,
         '{{Mains voltage3}}'               => $typeOfCurrent,
         '{{Mains voltage380}}'             => $voltFirst,
@@ -526,15 +525,20 @@ function passport_values(array $chars, array $rules, string $order, string $html
         '{{Corr-protection-P}}'            => $corrParts[1] ?? '',
         '{{Heater}}'                       => $heater,
         '{{Pos transmitter}}'              => $posTransmitter,
-        // из справочника двигателей
-        '{{P_N, кВт1}}'                    => $fromMotor('P_N, кВт1'),
-        '{{Режим работы1}}'                => $fromMotor('Режим работы1'),
-        '{{I_N, A}}'                       => $fromMotor('I_N, A'),
-        '{{I_A, A}}'                       => $fromMotor('I_A, A'),
-        '{{cos}}'                          => $fromMotor('cos') ?: $fromMotor('cos φ'),
-        '{{nom speed}}'                    => $fromMotor('nom speed'),
-        '{{Высоковольтные испытания [kV]}}' => $fromMotor('Высоковольтные испытания [kV]'),
-        '{{Холостой ток авт. выкл., A}}'   => $fromMotor('Холостой ток авт. выкл., A'),
+        // из справочника двигателей. Слева — имя плейсхолдера в шаблоне
+        // паспорта, справа — как называется колонка в справочнике
+        // (см. motor_aliases).
+        '{{Type}}'                 => $fromMotor('Тип'),
+        '{{nom.power.kvt}}'        => $fromMotor('P_N, кВт1'),
+        '{{Motor-kW}}'             => $fromMotor('P_N, кВт'),
+        '{{operating.mode}}'       => $fromMotor('Режим работы1'),
+        '{{Type of duty}}'         => $fromMotor('Режим работы1'),
+        '{{nom.tok.an}}'           => $fromMotor('I_N, A'),
+        '{{pysk.tok.a}}'           => $fromMotor('I_A, A'),
+        '{{cos}}'                  => $fromMotor('cos') ?: $fromMotor('cos φ'),
+        '{{speed.rpm}}'            => $fromMotor('Номинальная скорость, об/мин'),
+        '{{high.v.test.kvt}}'      => $fromMotor('Высоковольтные испытания [kV]'),
+        '{{tok.holost.hoda}}'      => $fromMotor('Холостой ток авт. выкл., A'),
     ];
 
     // плейсхолдеры, которых нет в списке выше, добираем по правилам:
