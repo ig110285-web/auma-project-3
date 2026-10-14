@@ -20,6 +20,7 @@ function api_handle(string $method, string $path): void
         ['GET',    '#^/api/documents/(\d+)/download$#',    'api_download'],
         ['POST',   '#^/api/documents/(\d+)/favorite$#',    'api_favorite'],
         ['POST',   '#^/api/documents/(\d+)/email$#',       'api_email'],
+        ['POST',   '#^/api/documents/(\d+)/serials$#',     'api_serials'],
         ['DELETE', '#^/api/documents/(\d+)$#',             'api_delete'],
         ['GET',    '#^/api/stats$#',                       'api_stats'],
     ];
@@ -567,9 +568,73 @@ function api_favorite(int $id): void
     json_out(['ok' => true, 'favorite' => (bool) $value]);
 }
 
-function api_delete(int $id): void
+/**
+ * Серийные номера документа: списки и выбранные значения.
+ *
+ * GET  — вернуть списки моторов и приводов из отчёта плюс текущий выбор;
+ * POST — сохранить выбранный номер: {m: "..."} или {p: "..."}.
+ * Пустая строка снимает выбор.
+ */
+function api_serials(int $id): void
 {
     $user = api_require_user();
+    $row = db_one('SELECT * FROM documents WHERE id = ?', [$id]);
+    if (!$row) {
+        json_error('Документ не найден', 404);
+    }
+
+    $lists = json_decode((string) ($row['serials_json'] ?? ''), true);
+    if (!is_array($lists)) {
+        $lists = ['m' => [], 'p' => []];
+        // списков ещё нет — вытащим их из отчёта и запомним
+        try {
+            $res = auma_fetch_characteristics((string) $row['order_no'], 'htm');
+            $parsed = auma_serials((string) ($res['content'] ?? ''));
+            $lists = ['m' => $parsed['m'], 'p' => $parsed['p']];
+            db_exec('UPDATE documents SET serials_json = ? WHERE id = ?',
+                    [json_encode($lists, JSON_UNESCAPED_UNICODE), $id]);
+        } catch (Throwable $e) {
+            // отчёта нет — списки останутся пустыми
+        }
+    }
+
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+        $in = json_input();
+        $set = [];
+        $params = [];
+        foreach (['m' => 'serial_m', 'p' => 'serial_p'] as $key => $col) {
+            if (!array_key_exists($key, $in)) {
+                continue;
+            }
+            $value = trim((string) $in[$key]);
+            // принимать только номера из своего списка
+            if ($value !== '' && !in_array($value, $lists[$key] ?? [], true)) {
+                json_error('Такого номера нет в списке отчёта', 422);
+            }
+            $set[] = $col . ' = ?';
+            $params[] = $value === '' ? null : $value;
+        }
+        if ($set) {
+            $params[] = $id;
+            db_exec('UPDATE documents SET ' . implode(', ', $set) . ' WHERE id = ?', $params);
+            log_event((int) $user['id'], 'serials', 'document', $id, (string) $row['filename']);
+        }
+    }
+
+    json_out([
+        'ok'       => true,
+        'order_no' => (string) $row['order_no'],
+        'lists'    => ['m' => array_values($lists['m'] ?? []),
+                       'p' => array_values($lists['p'] ?? [])],
+        'selected' => [
+            'm' => (string) (db_one('SELECT serial_m FROM documents WHERE id = ?', [$id])['serial_m'] ?? ''),
+            'p' => (string) (db_one('SELECT serial_p FROM documents WHERE id = ?', [$id])['serial_p'] ?? ''),
+        ],
+    ]);
+}
+
+function api_delete(int $id): void
+{    $user = api_require_user();
     $row = db_one('SELECT * FROM documents WHERE id = ?', [$id]);
     if (!$row) {
         json_error('Документ не найден', 404);

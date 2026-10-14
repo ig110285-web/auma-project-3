@@ -366,6 +366,32 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 }
 .bulk-count { font-size: 13px; color: var(--ink-2); }
 
+/* ---------------- Серийные номера ---------------- */
+
+/* Значки «м» и «п» слева от кнопки «создать паспорт»:
+   красные, пока номер не выбран, зелёные после выбора. */
+.act.serial {
+    width: 26px; height: 26px; border-radius: 8px;
+    font-size: 13px; font-weight: 700; line-height: 1;
+    color: #d92d20; background: #fef3f2; border: 1px solid #fecdca;
+}
+.act.serial:hover { background: #fee4e2; }
+.act.serial.ok { color: #067647; background: #ecfdf3; border-color: #abefc6; }
+.act.serial.ok:hover { background: #d1fadf; }
+
+.serial-list {
+    display: flex; flex-direction: column; gap: 6px;
+    max-height: 320px; overflow-y: auto; margin: 10px 0 4px;
+}
+.serial-item {
+    text-align: left; padding: 9px 12px; border-radius: 9px;
+    border: 1px solid var(--line); background: #fff;
+    font-size: 13px; font-family: ui-monospace, Consolas, monospace;
+    cursor: pointer;
+}
+.serial-item:hover { background: #f5f7fa; border-color: #cfd6e4; }
+.serial-item.active { background: #ecfdf3; border-color: #abefc6; color: #067647; font-weight: 600; }
+
 /* ---------------- Модальное окно ---------------- */
 
 .modal-backdrop {
