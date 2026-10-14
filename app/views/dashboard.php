@@ -202,10 +202,18 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                     </div>
                 </div>
 
+                <div class="bulk-bar" id="bulkBar" hidden>
+                    <span class="bulk-count" id="bulkCount">Выбрано: 0</span>
+                    <button type="button" class="btn btn-danger" id="bulkDelete">Удалить выбранные</button>
+                    <button type="button" class="btn btn-ghost" id="bulkClear">Снять выделение</button>
+                </div>
                 <div class="table-wrap">
                     <table class="table" id="docsTable">
                         <thead>
                             <tr class="head-row">
+                                <th class="col-check">
+                                    <input type="checkbox" id="checkAll" title="Выбрать все">
+                                </th>
                                 <th class="col-file">File</th>
                                 <th class="col-article">Type</th>
                                 <th class="col-order">Order</th>
@@ -214,6 +222,7 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                                 <th class="col-action">Action</th>
                             </tr>
                             <tr class="filter-row">
+                                <th></th>
                                 <th><input class="f-input" data-filter="file" placeholder="фильтр"></th>
                                 <th><input class="f-input" data-filter="article" placeholder="фильтр"></th>
                                 <th><input class="f-input" data-filter="order" placeholder="фильтр"></th>

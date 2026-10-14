@@ -16,7 +16,9 @@ const state = {
     order: '',
     fmt: 'pdf',
     menuDocId: null,
-    mailDocId: null
+    mailDocId: null,
+    // отмеченные галочками документы — для массового удаления
+    selected: new Set()
 };
 
 /* ---------------- Утилиты ---------------- */
@@ -158,17 +160,23 @@ function currentParams() {
 
 async function loadDocs() {
     const body = $('#docsBody');
-    body.innerHTML = '<tr><td colspan="7" class="empty">Загрузка…</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="empty">Загрузка…</td></tr>';
     try {
         const data = await api('/api/documents', { params: currentParams() });
         state.docs = data.items || [];
+        // выделение живёт только для показанных документов
+        const shown = new Set(state.docs.map(d => d.id));
+        Array.from(state.selected).forEach(id => {
+            if (!shown.has(id)) state.selected.delete(id);
+        });
         renderDocs();
+        updateBulkBar();
         $('#docsCount').textContent = 'Всего: ' + data.total
             + (state.folder ? ' · папка ' + state.folder : '')
             + (state.group ? ' · группа ' + groupTitle(state.group) : '')
             + (state.view === 'trash' ? ' · корзина' : '');
     } catch (e) {
-        body.innerHTML = '<tr><td colspan="7" class="empty">' + esc(e.message) + '</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" class="empty">' + esc(e.message) + '</td></tr>';
     }
 }
 
@@ -192,6 +200,10 @@ function renderDocs() {
                         <div class="file-kind">${esc(d.doc_type_title)}${d.folder_code ? ' · ' + esc(d.folder_code) : ''}</div>
                     </div>
                 </div>
+            </td>
+            <td class="col-check">
+                <input type="checkbox" class="row-check" data-id="${d.id}"
+                       ${state.selected.has(d.id) ? 'checked' : ''}>
             </td>
             <td>${esc(d.article) || '—'}</td>
             <td>${esc(d.order_no) || '—'}</td>
@@ -294,6 +306,61 @@ async function refreshAll() {
 }
 
 /* ---------------- Действия в строке ---------------- */
+
+/* Выделение галочками и массовое удаление */
+
+function updateBulkBar() {
+    const bar = $('#bulkBar');
+    const count = $('#bulkCount');
+    const all = $('#checkAll');
+    if (!bar) return;
+    const n = state.selected.size;
+    bar.hidden = n === 0;
+    if (count) count.textContent = 'Выбрано: ' + n;
+    if (all) {
+        const total = state.docs.length;
+        all.checked = total > 0 && n === total;
+        all.indeterminate = n > 0 && n < total;
+    }
+}
+
+function clearSelection() {
+    state.selected.clear();
+    document.querySelectorAll('.row-check').forEach(c => { c.checked = false; });
+    updateBulkBar();
+}
+
+async function bulkDelete() {
+    const ids = Array.from(state.selected);
+    if (ids.length === 0) return;
+
+    const ok = await confirmDialog(
+        'Удалить ' + ids.length + ' файл(ов)?',
+        'Выбранные файлы будут удалены с сайта и с диска. Отменить это нельзя.',
+        'Удалить');
+    if (!ok) return;
+
+    let done = 0;
+    const failed = [];
+    for (const id of ids) {
+        try {
+            await api('/api/documents/' + id, { method: 'DELETE' });
+            done++;
+        } catch (e) {
+            const doc = state.docs.find(d => d.id === id);
+            failed.push(doc ? doc.filename : ('#' + id));
+        }
+    }
+
+    state.selected.clear();
+    if (failed.length) {
+        toast('Удалено: ' + done + ', не удалось: ' + failed.length + ' (' + failed.slice(0, 3).join(', ') + ')', 'err');
+    } else {
+        toast('Удалено файлов: ' + done, 'ok');
+    }
+    await refreshAll();
+    updateBulkBar();
+}
 
 function openRowMenu(id, anchor) {
     const menu = $('#rowMenu');
@@ -673,6 +740,32 @@ function init() {
         if (e.target === $('#mailModal')) $('#mailModal').hidden = true;
     });
     $('#mailTo').addEventListener('keydown', e => { if (e.key === 'Enter') sendMail(); });
+
+    // Массовое удаление: галочки в строках, «выбрать все» и кнопки панели
+    $('#docsBody').addEventListener('change', e => {
+        const box = e.target.closest('.row-check');
+        if (!box) return;
+        const id = Number(box.dataset.id);
+        if (box.checked) {
+            state.selected.add(id);
+        } else {
+            state.selected.delete(id);
+        }
+        updateBulkBar();
+    });
+    $('#checkAll').addEventListener('change', e => {
+        if (e.target.checked) {
+            state.docs.forEach(d => state.selected.add(d.id));
+        } else {
+            state.selected.clear();
+        }
+        document.querySelectorAll('.row-check').forEach(c => {
+            c.checked = state.selected.has(Number(c.dataset.id));
+        });
+        updateBulkBar();
+    });
+    $('#bulkDelete').addEventListener('click', bulkDelete);
+    $('#bulkClear').addEventListener('click', clearSelection);
 
     // Заглушки
     $('#inviteBtn').addEventListener('click', () => toast('Приглашения появятся позже'));

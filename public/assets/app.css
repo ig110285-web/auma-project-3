@@ -352,6 +352,18 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 .menu-owner .owner-mail { max-width: 150px; }
 .menu-owner:empty { display: none; }
 
+/* ---------------- Массовое удаление ---------------- */
+
+.col-check { width: 34px; }
+.col-check input { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent, #2f6fed); }
+
+.bulk-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; margin-bottom: 10px;
+    background: #f4f7fe; border: 1px solid #d7e2fb; border-radius: 10px;
+}
+.bulk-count { font-size: 13px; color: var(--ink-2); }
+
 /* ---------------- Модальное окно ---------------- */
 
 .modal-backdrop {
