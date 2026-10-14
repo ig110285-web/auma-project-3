@@ -207,7 +207,7 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                         <thead>
                             <tr class="head-row">
                                 <th class="col-file">File</th>
-                                <th class="col-article">Article</th>
+                                <th class="col-article">Type</th>
                                 <th class="col-order">Order</th>
                                 <th class="col-size">File Size</th>
                                 <th class="col-date">Data Uploaded</th>
