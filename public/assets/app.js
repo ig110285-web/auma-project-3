@@ -211,12 +211,10 @@ function renderDocs() {
             <td>${esc(d.created_human)}</td>
             <td>
                 <div class="actions">
-                    ${d.serial_m || d.serial_p || (d.serials_json && d.serials_json !== '')
-                        ? `<button class="act serial ${d.serial_m ? 'ok' : ''}" data-act="serial-m" data-id="${d.id}"
-                                   title="${d.serial_m ? 'Мотор: ' + esc(d.serial_m) : 'Выбрать серийный номер мотора'}">м</button>
-                           <button class="act serial ${d.serial_p ? 'ok' : ''}" data-act="serial-p" data-id="${d.id}"
-                                   title="${d.serial_p ? 'Привод: ' + esc(d.serial_p) : 'Выбрать серийный номер привода'}">п</button>`
-                        : ''}
+                    <button class="act serial ${d.serial_m ? 'ok' : ''}" data-act="serial-m" data-id="${d.id}"
+                            title="${d.serial_m ? 'Мотор: ' + esc(d.serial_m) : 'Выбрать серийный номер мотора'}">м</button>
+                    <button class="act serial ${d.serial_p ? 'ok' : ''}" data-act="serial-p" data-id="${d.id}"
+                            title="${d.serial_p ? 'Привод: ' + esc(d.serial_p) : 'Выбрать серийный номер привода'}">п</button>
                     <button class="act passport" data-act="passport" data-id="${d.id}" title="Создать паспорт">
                         <svg viewBox="0 0 24 24" width="17" height="17">
                             <path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
