@@ -211,7 +211,6 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                                 <th class="col-order">Order</th>
                                 <th class="col-size">File Size</th>
                                 <th class="col-date">Data Uploaded</th>
-                                <th class="col-owner">File Owner</th>
                                 <th class="col-action">Action</th>
                             </tr>
                             <tr class="filter-row">
@@ -225,7 +224,6 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                                         <input class="f-input" type="date" data-filter="date_to" title="по">
                                     </div>
                                 </th>
-                                <th><input class="f-input" data-filter="owner" placeholder="фильтр"></th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -244,6 +242,7 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
 
 <!-- Меню действий в строке -->
 <div class="menu" id="rowMenu" hidden>
+    <div class="menu-owner" id="rowMenuOwner">—</div>
     <button type="button" data-act="email">Отправить на почту</button>
     <button type="button" data-act="delete" class="danger">Удалить файл</button>
 </div>

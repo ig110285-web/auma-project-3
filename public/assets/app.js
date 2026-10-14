@@ -198,12 +198,6 @@ function renderDocs() {
             <td>${esc(d.size_human)}</td>
             <td>${esc(d.created_human)}</td>
             <td>
-                <div class="owner-cell">
-                    <span class="owner-avatar">${esc(initial)}</span>
-                    <span class="owner-mail" title="${esc(owner)}">${esc(owner)}</span>
-                </div>
-            </td>
-            <td>
                 <div class="actions">
                     <button class="act passport" data-act="passport" data-id="${d.id}" title="Создать паспорт">
                         <svg viewBox="0 0 24 24" width="17" height="17">
@@ -306,6 +300,19 @@ function openRowMenu(id, anchor) {
     // id храним прямо на элементе меню: state может обнулиться от постороннего события
     menu.dataset.docId = String(id);
     state.menuDocId = id;
+
+    // владелец файла показывается в самом меню — отдельной колонки в таблице нет
+    const doc = (state.docs || []).find((x) => String(x.id) === String(id));
+    const ownerBox = $('#rowMenuOwner');
+    if (ownerBox) {
+        const who = doc ? (doc.owner_email || doc.owner_name || '') : '';
+        const initial = who.trim().charAt(0).toUpperCase();
+        ownerBox.innerHTML = who
+            ? '<span class="owner-avatar">' + esc(initial) + '</span>'
+              + '<span class="owner-mail" title="' + esc(who) + '">' + esc(who) + '</span>'
+            : '<span class="owner-mail">—</span>';
+    }
+
     menu.hidden = false;
     const r = anchor.getBoundingClientRect();
     const w = menu.offsetWidth || 190;

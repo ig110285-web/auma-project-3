@@ -341,6 +341,16 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 .menu button:hover { background: #f5f7fa; }
 .menu button.danger { color: var(--danger); }
 .menu button.danger:hover { background: #fef3f2; }
+/* владелец файла: раньше был отдельной колонкой, теперь в меню действий */
+.menu-owner {
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 11px 9px; margin-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px; color: var(--ink-2);
+}
+.menu-owner .owner-avatar { width: 22px; height: 22px; font-size: 11px; }
+.menu-owner .owner-mail { max-width: 150px; }
+.menu-owner:empty { display: none; }
 
 /* ---------------- Модальное окно ---------------- */
 
