@@ -21,6 +21,7 @@ function api_handle(string $method, string $path): void
         ['POST',   '#^/api/documents/(\d+)/favorite$#',    'api_favorite'],
         ['POST',   '#^/api/documents/(\d+)/email$#',       'api_email'],
         ['POST',   '#^/api/documents/(\d+)/serials$#',     'api_serials'],
+        ['GET',    '#^/api/documents/(\d+)/serials$#',     'api_serials'],
         ['DELETE', '#^/api/documents/(\d+)$#',             'api_delete'],
         ['GET',    '#^/api/stats$#',                       'api_stats'],
     ];
