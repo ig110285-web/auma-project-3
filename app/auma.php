@@ -305,6 +305,30 @@ function auma_extract_article(string $html): string
 {
     $rows = auma_rows($html);
 
+    // 0. Первая позиция заказа: значение берём из строки «Type».
+    //
+    // В части отчётов строка «Article» для первой позиции заполнена неверно.
+    // Пример — заказ 13405414:
+    //     Article || SAEX-14.2      <- так писать нельзя
+    //     Type    || SAREX-14.2     <- верное значение
+    // Разница в букве R: SAREx — привод для регулирующего режима, SAEx —
+    // обычный. Значение в «Type» всегда соответствует позиции Pos. 1.0,
+    // поэтому оно и берётся первым, а «Article» остаётся запасным.
+    foreach ($rows as $rowHtml) {
+        $cells = auma_row_cells($rowHtml);
+        foreach ($cells as $i => $cell) {
+            if (!preg_match('/^Type$/iu', $cell)) {
+                continue;
+            }
+            foreach (array_slice($cells, $i + 1) as $value) {
+                if (auma_looks_like_article($value)
+                    && preg_match('/^[A-Za-z]/', trim($value))) {
+                    return auma_normalize_article($value);
+                }
+            }
+        }
+    }
+
     // 1. Значение в той же строке, где стоит подпись «Article».
     foreach ($rows as $rowHtml) {
         $cells = auma_row_cells($rowHtml);
