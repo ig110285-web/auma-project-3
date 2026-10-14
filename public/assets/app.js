@@ -551,6 +551,18 @@ async function createPassport(id) {
         return;
     }
 
+    // Серийные номера в отчёте идут списком, и какой попадёт в паспорт,
+    // выбирает человек значками «м» и «п». Если не выбрано — предупреждаем
+    // и спрашиваем, собирать ли паспорт без этих данных.
+    if (!doc.serial_m || !doc.serial_p) {
+        const what = (!doc.serial_m && !doc.serial_p)
+            ? 'Мотор и привод не выбраны'
+            : (!doc.serial_m ? 'Мотор не выбран' : 'Привод не выбран');
+        const go = await confirmDialog('Серийные номера не выбраны',
+            what + '. Паспорт будет собран без этих данных. Продолжить?', 'Создать');
+        if (!go) return;
+    }
+
     const btn = document.querySelector('[data-act="passport"][data-id="' + id + '"]');
     if (btn) btn.classList.add('busy');
     toast('Собираю паспорт ' + (doc.article || doc.order_no || '') + '…');

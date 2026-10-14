@@ -739,6 +739,16 @@ function api_passport(int $id): void
     $order = (string) $doc['order_no'];
     $values = passport_values($chars, passport_rules(), $order, $html);
 
+    // Серийные номера выбирает человек в таблице документов: в отчёте их
+    // несколько, и какой из них попадёт в паспорт, решает он. Выбранный
+    // номер перекрывает то, что нашлось бы по правилам.
+    foreach (['m' => '{{serial number-m}}', 'p' => '{{serial number-p}}'] as $k => $ph) {
+        $chosen = trim((string) ($doc['serial_' . $k] ?? ''));
+        if ($chosen !== '') {
+            $values[$ph] = $chosen;
+        }
+    }
+
     // собираем во временный файл, а в хранилище кладём уже готовое
     $tmp = sys_get_temp_dir() . '/auma_passport_' . getmypid() . '_' . bin2hex(random_bytes(4)) . '.pdf';
     $report = passport_fill(passport_template(), $values, $tmp);
