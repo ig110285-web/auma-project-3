@@ -261,6 +261,20 @@ function motor_index(): array
     return $index;
 }
 
+/** Округлить значение до одного знака после запятой: 0,616 -> 0,6. */
+function ru_round1(string $value): string
+{
+    $value = trim($value);
+    if ($value === '') {
+        return '';
+    }
+    $plain = str_replace(',', '.', $value);
+    if (!is_numeric($plain)) {
+        return $value;
+    }
+    return number_format((float) $plain, 1, ',', '');
+}
+
 /** Значение колонки справочника двигателей по её названию. */
 function motor_value(?array $row, string $columnName): string
 {
@@ -555,11 +569,13 @@ function passport_values(array $chars, array $rules, string $order, string $html
         '{{pysk.tok.a}}'           => $fromMotor('I_A, A'),
         '{{cos}}'                  => $fromMotor('cos') ?: $fromMotor('cos φ'),
         '{{speed.rpm}}'            => $fromMotor('Номинальная скорость, об/мин'),
-        '{{high.v.test.kvt}}'      => $fromMotor('Высоковольтные испытания [kV]'),
-        '{{tok.holost.hoda}}'      => $fromMotor('Холостой ток авт. выкл., A'),
+        // холостой ток и высоковольтные испытания в шаблоне стоят
+        // с одним знаком после запятой: 0,616 -> 0,6, 0,6776 -> 0,7
+        '{{high.v.test.kvt}}'      => ru_round1($fromMotor('Высоковольтные испытания [kV]')),
+        '{{tok.holost.hoda}}'      => ru_round1($fromMotor('Холостой ток авт. выкл., A')),
         // в шаблоне этот плейсхолдер набран по-русски, а не английским
         // именем колонки — правило его не покрывает, заполняем кодом
-        '{{Холостой ток авт. выкл., A}}' => $fromMotor('Холостой ток авт. выкл., A'),
+        '{{Холостой ток авт. выкл., A}}' => ru_round1($fromMotor('Холостой ток авт. выкл., A')),
     ];
 
     // плейсхолдеры, которых нет в списке выше, добираем по правилам:
