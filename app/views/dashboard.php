@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /** Дашборд: разметка по макету ref-3. Данные подтягивает app.js. */
 $appName = (string) config('app.name', 'AUMA Documentation');
 $u = $user;
@@ -11,7 +11,11 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <title><?= e($appName) ?></title>
-<link rel="stylesheet" href="<?= e(asset('/assets/app.css')) ?>">
+<!-- Стили грузим не блокируя отрисовку: иначе страница ждёт файл
+     и данные появляются только после остановки загрузки. -->
+<link rel="preload" as="style" href="<?= e(asset('/assets/app.css')) ?>"
+      onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="<?= e(asset('/assets/app.css')) ?>"></noscript>
 </head>
 <body>
 

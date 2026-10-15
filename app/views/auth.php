@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /** Вход и регистрация. */
 $isRegister = $registerMode ?? false;
 $appName = (string) config('app.name', 'AUMA Documentation');
@@ -9,7 +9,11 @@ $appName = (string) config('app.name', 'AUMA Documentation');
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e($isRegister ? 'Регистрация' : 'Вход') ?> — <?= e($appName) ?></title>
-<link rel="stylesheet" href="<?= e(asset('/assets/app.css')) ?>">
+<!-- Стили грузим не блокируя отрисовку: иначе страница ждёт файл
+     и данные появляются только после остановки загрузки. -->
+<link rel="preload" as="style" href="<?= e(asset('/assets/app.css')) ?>"
+      onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="<?= e(asset('/assets/app.css')) ?>"></noscript>
 </head>
 <body class="auth-body">
 
