@@ -246,7 +246,7 @@ button { font: inherit; cursor: pointer; }
 .folder-group { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
 .folder {
     border: 1px solid var(--line); background: #fff; border-radius: 12px;
-    padding: 13px 12px; display: flex; align-items: center; gap: 9px;
+    padding: 8px 12px; display: flex; align-items: center; gap: 9px;
     font-size: 13px; font-weight: 600; transition: border-color .12s, background .12s;
 }
 .folder:hover { border-color: #cfe3f7; background: #fbfdff; }
