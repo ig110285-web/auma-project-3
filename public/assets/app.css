@@ -96,7 +96,7 @@ button { font: inherit; cursor: pointer; }
 .side-nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-item {
     display: flex; align-items: center; gap: 10px;
-    padding: 9px 10px; border-radius: 10px;
+    padding: 3px 10px; border-radius: 10px;
     color: var(--ink-3); font-size: 13.5px;
     transition: background .12s, color .12s;
 }
