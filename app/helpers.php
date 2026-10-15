@@ -148,6 +148,23 @@ function sanitize_html(string $html): string
         $html
     ) ?? $html;
 
+    // Ресурсы с чужих серверов. Картинка в документе AUMA ссылается на
+    // https://www4.auma.com/common/image/pdf_icon_15px.gif — AUMA на запросы
+    // извне не отвечает, запрос висит до таймаута, и всё это время браузер
+    // крутит индикатор загрузки. Отрисовку картинки не блокируют, поэтому
+    // страница видна, но «загружается» она десять секунд.
+    $html = preg_replace_callback(
+        '#<(img|source|video|audio|track|input|object|embed)\b[^>]*>#is',
+        static function (array $m): string {
+            return preg_match('#\b(src|srcset|poster|data)\s*=\s*["\']?\s*https?://#i', $m[0])
+                ? ' ' : $m[0];
+        },
+        $html
+    ) ?? $html;
+
+    // то же для фоновых картинок в стилях: url(https://...)
+    $html = preg_replace('#url\(\s*["\']?\s*https?://[^)]*\)#is', 'none', $html) ?? $html;
+
     // обработчики событий вида onclick="..."
     $html = preg_replace('#\son[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)#is', ' ', $html) ?? $html;
 
