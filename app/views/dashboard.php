@@ -42,7 +42,7 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
         <nav class="side-nav" id="sideNav">
             <a href="#" class="nav-item active" data-view="dashboard">
                 <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 13h7V4H4v9Zm0 7h7v-5H4v5Zm9 0h7v-9h-7v9Zm0-16v5h7V4h-7Z" fill="currentColor"/></svg>
-                Dashboard
+                Главная
             </a>
             <?php
             // Группы и папки берутся из app/catalog.php — добавление новой
