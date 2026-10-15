@@ -135,9 +135,15 @@ function sanitize_html(string $html): string
     $html = preg_replace('#<script\b[^>]*>.*?</script>#is', ' ', $html) ?? $html;
     $html = preg_replace('#<script\b[^>]*/?>#is', ' ', $html) ?? $html;
 
+    // Таблицы стилей, тем более чужие. Документ AUMA ссылается на
+    // https://www4.auma.com/common/css/styles.css — браузер ждёт этот файл,
+    // прежде чем показать содержимое, а AUMA на запросы извне не отвечает.
+    // Страница остаётся пустой, пока не нажмёшь «остановить загрузку».
+    $html = preg_replace('#<link\b[^>]*>#is', ' ', $html) ?? $html;
+
     // элементы, которые могут исполнять код или перехватывать навигацию
     $html = preg_replace(
-        '#</?(iframe|object|embed|applet|frame|frameset|form|base|link\s+rel=["\']?import)\b[^>]*>#is',
+        '#</?(iframe|object|embed|applet|frame|frameset|form|base)\b[^>]*>#is',
         ' ',
         $html
     ) ?? $html;
