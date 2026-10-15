@@ -117,7 +117,7 @@ button { font: inherit; cursor: pointer; }
 /* Подменю: пункты SA, SAEx, SQ, SQEx и так далее.
    Отступ слева выравнивает их под названием группы,
    gap задаёт расстояние по вертикали между пунктами. */
-.nav-sub { display: flex; flex-direction: column; gap: 6px; }
+.nav-sub { display: flex; flex-direction: column; gap: 4px; }
 .nav-group.collapsed .nav-sub { display: none; }
 .nav-sub-item { padding-left: 38px; font-size: 13px; }
 
