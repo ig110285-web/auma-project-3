@@ -240,7 +240,9 @@ button { font: inherit; cursor: pointer; }
 .progress i { display: block; height: 100%; background: var(--blue); border-radius: 99px; transition: width .4s; }
 
 /* Папки */
-.folders { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+/* Папок стало много (в самой большой группе одиннадцать), поэтому
+   в строке помещается одиннадцать плиток. */
+.folders { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 8px; }
 .folder {
     border: 1px solid var(--line); background: #fff; border-radius: 12px;
     padding: 13px 12px; display: flex; align-items: center; gap: 9px;
