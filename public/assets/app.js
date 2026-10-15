@@ -138,16 +138,38 @@ function renderStats(stats) {
 
 function renderFolders() {
     const box = $('#folders');
-    const items = state.folders.slice();
-    let html = items.map(f => `
+
+    // Каждая группа — своя сетка, поэтому начинается с новой строки.
+    // В сетке восемь мест: группа из одиннадцати папок занимает две
+    // строки, а следующая всё равно начинается с чистой.
+    const counts = {};
+    state.folders.forEach(f => { counts[f.code] = f.docs; });
+
+    const grid = (items) => items.map(f => `
         <a href="#" class="folder${state.folder === f.code ? ' active' : ''}" data-folder="${esc(f.code)}">
             <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" fill="currentColor"/></svg>
             ${esc(f.title)}
-            <span class="folder-count">${f.docs}</span>
+            <span class="folder-count">${counts[f.code] ?? 0}</span>
         </a>`).join('');
-    const empty = Math.max(0, 12 - items.length);
-    for (let i = 0; i < empty; i++) html += '<span class="folder folder-empty"></span>';
-    box.innerHTML = html;
+
+    const groups = state.groups || [];
+    if (!groups.length) {
+        box.innerHTML = '<div class="folder-group">' + grid(state.folders) + '</div>';
+        return;
+    }
+
+    box.innerHTML = groups.map(g => {
+        const items = (g.folders || []).map(f => ({
+            code: f.code,
+            title: f.title,
+            docs: counts[f.code] ?? 0
+        }));
+        const cells = grid(items);
+        // добиваем строку пустыми плитками, чтобы ряды были ровными
+        const pad = (8 - (items.length % 8)) % 8;
+        const blanks = '<span class="folder folder-empty"></span>'.repeat(pad);
+        return '<div class="folder-group">' + cells + blanks + '</div>';
+    }).join('');
 }
 
 function currentParams() {

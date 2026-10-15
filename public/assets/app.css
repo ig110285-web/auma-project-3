@@ -240,9 +240,10 @@ button { font: inherit; cursor: pointer; }
 .progress i { display: block; height: 100%; background: var(--blue); border-radius: 99px; transition: width .4s; }
 
 /* Папки */
-/* Папки в строке. Восемь — столько помещается по ширине без обрезки
-   названий вроде ACExC-SIL. */
-.folders { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
+/* Папки выводятся группами: каждая группа — своя сетка и потому
+   начинается с новой строки. В строке восемь плиток. */
+.folders { display: flex; flex-direction: column; gap: 10px; }
+.folder-group { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
 .folder {
     border: 1px solid var(--line); background: #fff; border-radius: 12px;
     padding: 13px 12px; display: flex; align-items: center; gap: 9px;
