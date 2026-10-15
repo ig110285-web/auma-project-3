@@ -141,9 +141,17 @@ function auma_temp_jar(): string
  * как раньше. Ошибка кеша загрузку не ломает.
  */
 
+/**
+ * Кеш ответов AUMA. false — работать без него, как раньше: каждый запрос
+ * идёт на AUMA. Переключатель нужен, чтобы сравнить поведение и скорость;
+ * данные в таблице auma_cache при этом остаются нетронутыми.
+ */
+const AUMA_CACHE_ENABLED = false;
+
 function auma_cache_ready(): bool
 {
-    return function_exists('db_query') && function_exists('db_exec');
+    return AUMA_CACHE_ENABLED
+        && function_exists('db_query') && function_exists('db_exec');
 }
 
 function auma_cache_ensure(): void
