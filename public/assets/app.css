@@ -220,7 +220,8 @@ button { font: inherit; cursor: pointer; }
 .block-head h2 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
 
 /* Операции */
-.ops { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+/* Три операции заполняют строку целиком */
+.ops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .op {
     border: 1px solid var(--line); background: #fff; border-radius: var(--radius);
     padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px;
@@ -229,9 +230,16 @@ button { font: inherit; cursor: pointer; }
 }
 .op:hover { border-color: #d6e6f7; box-shadow: var(--shadow); transform: translateY(-1px); }
 .op-icon {
-    width: 74px; height: 74px; border-radius: 16px; background: var(--icon-box);
+    width: 62px; height: 62px; border-radius: 16px; background: var(--icon-box);
     display: grid; place-items: center; color: var(--ink);
 }
+/* Цветные подложки: у каждой операции свой смысл и свой цвет */
+.op-icon.op-blue   { background: #e8f1fe; color: #1d63d2; }
+.op-icon.op-green  { background: #e7f7ee; color: #1a8a4a; }
+.op-icon.op-violet { background: #f0ebfd; color: #6941c6; }
+.op:hover .op-icon.op-blue   { background: #d7e7fd; }
+.op:hover .op-icon.op-green  { background: #d3f2e0; }
+.op:hover .op-icon.op-violet { background: #e4dafc; }
 .op-title { font-size: 12.5px; color: var(--ink); line-height: 1.3; }
 .op-empty { background: #fbfbfc; pointer-events: none; }
 .op[disabled] { opacity: .6; cursor: progress; }

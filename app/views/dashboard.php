@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /** Дашборд: разметка по макету ref-3. Данные подтягивает app.js. */
 $appName = (string) config('app.name', 'AUMA Documentation');
 $u = $user;
@@ -147,31 +147,48 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                 </div>
                 <div class="ops">
                     <button class="op" id="opChars" type="button">
-                        <span class="op-icon">
-                            <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 4v10m0 0-4-4m4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span class="op-icon op-blue">
+                            <!-- документ со стрелкой вниз: загрузить характеристики -->
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+                                 stroke="currentColor" stroke-width="1.9"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                                <path d="M14 3v5h5"/>
+                                <path d="M12 11.5v5.2"/>
+                                <path d="M9.6 14.5 12 16.9l2.4-2.4"/>
+                            </svg>
                         </span>
                         <span class="op-title">Загрузить характеристики</span>
                     </button>
                     <button class="op" id="opScheme" type="button">
-                        <span class="op-icon">
-                            <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 4v10m0 0-4-4m4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span class="op-icon op-green">
+                            <!-- монтажная плата с дорожками: схема подключения -->
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+                                 stroke="currentColor" stroke-width="1.9"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2.5"/>
+                                <circle cx="8.4" cy="16" r="1.5"/>
+                                <circle cx="15.6" cy="8.4" r="1.5"/>
+                                <path d="M8.4 14.5V9.6a1.2 1.2 0 0 1 1.2-1.2h4.4"/>
+                                <path d="M15.6 9.9v4.5a1.2 1.2 0 0 1-1.2 1.2H11"/>
+                            </svg>
                         </span>
                         <span class="op-title">Загрузить схему пдкл.</span>
                     </button>
                     <button class="op" id="opPassport" type="button">
-                        <span class="op-icon">
-                            <svg viewBox="0 0 24 24" width="26" height="26">
-                                <path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                                <path d="M14 3v4h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                                <path d="M9 11h6M9 14h3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-                                <circle cx="15" cy="17.5" r="2.3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+                        <span class="op-icon op-violet">
+                            <!-- документ с печатью: паспорт изделия -->
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+                                 stroke="currentColor" stroke-width="1.9"
+                                 stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                                <path d="M14 3v5h5"/>
+                                <circle cx="12" cy="13.6" r="2.5"/>
+                                <path d="M8.9 19.4c.5-1.5 1.7-2.4 3.1-2.4s2.6.9 3.1 2.4"/>
                             </svg>
                         </span>
                         <span class="op-title">Создать паспорт</span>
                     </button>
-                    <span class="op op-empty"></span>
-                    <span class="op op-empty"></span>
-                    <span class="op op-empty"></span>
                 </div>
             </section>
 
