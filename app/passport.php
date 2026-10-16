@@ -290,6 +290,28 @@ function motor_type_known(string $value): bool
     return $key !== '' && isset(motor_tips()[$key]);
 }
 
+/**
+ * Относится ли документ к блокам управления.
+ *
+ * У блоков управления своих серийных номеров в справочнике двигателей
+ * нет, поэтому значки «М-П» им не показываются — вместо них кнопка «sn»
+ * со списком номеров с буквенной парой MA.
+ */
+function is_control_unit(string $article): bool
+{
+    $a = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $article) ?? '');
+    if ($a === '') {
+        return false;
+    }
+    // длинные приставки раньше коротких, иначе AC перехватит ACExC
+    foreach (['ACEXCSIL', 'ACSIL', 'ACEXC', 'AMEXC', 'ACV', 'AC', 'AM'] as $p) {
+        if (str_starts_with($a, $p)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /** Соответствие: колонка в файле => колонка в таблице. */
 function motors_columns(): array
 {

@@ -214,6 +214,10 @@ function doc_public(array $r): array
         // значки «м» и «п» показываем только для типов, которые есть
         // в колонке tip справочника двигателей
         'has_motor_ref' => motor_type_known((string) ($r['article'] ?? '')),
+        // блоки управления: вместо «М-П» показывается кнопка «sn»
+        // со списком номеров с буквенной парой MA
+        'is_control_unit' => is_control_unit((string) ($r['article'] ?? '')),
+        'serial_b'    => (string) ($r['serial_b'] ?? ''),
         'created_at'  => $r['created_at'],
         'created_human' => date('d/m/Y', strtotime((string) $r['created_at'])),
         'download_url'=> base_path('/api/documents/' . (int) $r['id'] . '/download'),

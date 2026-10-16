@@ -234,10 +234,17 @@ function renderDocs() {
             <td>
                 <div class="actions">
                     ${d.has_motor_ref ? `
-                    <button class="act serial ${d.serial_m && d.serial_p ? 'ok' : ''}" data-act="serials" data-id="${d.id}"
+                    <button class="act serial ${d.serial_m && d.serial_p ? 'ok' : ''}" data-act="serials"
+                            data-kinds="p,m" data-id="${d.id}"
                             title="${d.serial_m || d.serial_p
                                 ? 'Мотор: ' + esc(d.serial_m || '—') + ', привод: ' + esc(d.serial_p || '—')
-                                : 'Выбрать серийные номера мотора и привода'}">М-П</button>` : ''}
+                                : 'Выбрать серийные номера мотора и привода'}">М-П</button>`
+                    : (d.is_control_unit ? `
+                    <button class="act serial ${d.serial_b ? 'ok' : ''}" data-act="serials"
+                            data-kinds="b" data-id="${d.id}"
+                            title="${d.serial_b
+                                ? 'Блок управления: ' + esc(d.serial_b)
+                                : 'Выбрать серийный номер блока управления'}">sn</button>` : '')}
                     <button class="act passport" data-act="passport" data-id="${d.id}" title="Создать паспорт">
                         <svg viewBox="0 0 24 24" width="17" height="17">
                             <path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
@@ -334,13 +341,19 @@ async function refreshAll() {
 
 /* ---------------- Серийные номера ---------------- */
 
+const SERIAL_TITLES = {
+    p: 'Серийный номер привода',
+    m: 'Серийный номер мотора',
+    b: 'Серийный номер блока управления',
+    r: 'Серийный номер редуктора'
+};
+
 /**
- * Окно выбора серийных номеров: мотор и привод в одном месте.
- * Списки приходят из отчёта и разобраны по буквенной паре в номере:
- * MM и NM — моторы, MD и NS — приводы. Выбор сохраняется сразу,
- * окно закрывается кнопкой «Готово», тогда же обновляется таблица.
+ * Окно выбора серийных номеров. Какие списки показывать, задаёт
+ * вызывающая сторона: у приводов это мотор и привод, у блоков
+ * управления — только номер блока.
  */
-async function openSerials(id) {
+async function openSerials(id, kinds = ['p', 'm']) {
     const doc = state.docs.find(d => String(d.id) === String(id));
     let data;
     try {
@@ -353,12 +366,12 @@ async function openSerials(id) {
     const lists = data.lists || {};
     const sel = data.selected || {};
 
-    const section = (kind, title, list) => `
+    const section = (kind) => `
         <div class="serial-block">
-            <div class="serial-head">${esc(title)}</div>
+            <div class="serial-head">${esc(SERIAL_TITLES[kind] || kind)}</div>
             <div class="serial-list" data-list="${kind}">
-                ${list.length
-                    ? list.map(n => `<button type="button"
+                ${(lists[kind] || []).length
+                    ? (lists[kind] || []).map(n => `<button type="button"
                             class="serial-item${n === (sel[kind] || '') ? ' active' : ''}"
                             data-kind="${kind}" data-num="${esc(n)}">${esc(n)}</button>`).join('')
                     : '<span class="serial-none">в отчёте нет таких номеров</span>'}
@@ -371,9 +384,8 @@ async function openSerials(id) {
         <div class="modal modal-wide">
             <h3>Серийные номера</h3>
             <p class="modal-sub">${esc(doc ? doc.filename : '')}</p>
-            <div class="serial-cols">
-                ${section('p', 'Серийный номер привода', lists.p || [])}
-                ${section('m', 'Серийный номер мотора', lists.m || [])}
+            <div class="serial-cols${kinds.length === 1 ? ' one' : ''}">
+                ${kinds.map(section).join('')}
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" data-clear="1">Снять выбор</button>
@@ -396,7 +408,7 @@ async function openSerials(id) {
             return;
         }
         if (e.target.closest('[data-clear]')) {
-            for (const kind of ['m', 'p']) {
+            for (const kind of kinds) {
                 back.querySelectorAll('.serial-item[data-kind="' + kind + '"].active')
                     .forEach(x => x.classList.remove('active'));
                 await saveSerial(id, kind, '', false);
@@ -423,11 +435,11 @@ async function saveSerial(id, kind, value, refresh = true) {
     try {
         await api('/api/documents/' + id + '/serials', {
             method: 'POST',
-            body: kind === 'm' ? { m: value } : { p: value }
+            body: { [kind]: value }
         });
         const doc = state.docs.find(d => String(d.id) === String(id));
         if (doc) {
-            if (kind === 'm') { doc.serial_m = value; } else { doc.serial_p = value; }
+            doc['serial_' + kind] = value;
         }
         if (refresh) {
             await refreshAll();
@@ -855,7 +867,10 @@ function init() {
         const id = parseInt(btn.dataset.id, 10);
         if (btn.dataset.act === 'menu') { e.preventDefault(); openRowMenu(id, btn); }
         if (btn.dataset.act === 'passport') { e.preventDefault(); createPassport(id); }
-        if (btn.dataset.act === 'serials') { e.preventDefault(); openSerials(id); }
+        if (btn.dataset.act === 'serials') {
+            e.preventDefault();
+            openSerials(id, (btn.dataset.kinds || 'p,m').split(','));
+        }
         if (btn.dataset.act === 'download') { e.preventDefault(); downloadDoc(id); }
     });
 

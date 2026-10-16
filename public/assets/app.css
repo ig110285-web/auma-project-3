@@ -396,8 +396,10 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 
 /* Окно выбора: два списка рядом */
 .modal-wide { max-width: 720px; }
-/* Два столбца: слева привод, справа мотор */
+/* Два столбца: слева привод, справа мотор. Если список один —
+   он занимает всю ширину. */
 .serial-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.serial-cols.one { grid-template-columns: 1fr; }
 .serial-block { margin-top: 14px; }
 .serial-head { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
 .serial-none { font-size: 12.5px; color: var(--ink-3); }
