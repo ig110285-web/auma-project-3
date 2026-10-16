@@ -592,12 +592,13 @@ function api_serials(int $id): void
 
     $lists = json_decode((string) ($row['serials_json'] ?? ''), true);
     if (!is_array($lists)) {
-        $lists = ['m' => [], 'p' => []];
+        $lists = ['m' => [], 'p' => [], 'b' => [], 'r' => []];
         // списков ещё нет — вытащим их из отчёта и запомним
         try {
             $res = auma_fetch_characteristics((string) $row['order_no'], 'htm');
             $parsed = auma_serials((string) ($res['content'] ?? ''));
-            $lists = ['m' => $parsed['m'], 'p' => $parsed['p']];
+            $lists = ['m' => $parsed['m'], 'p' => $parsed['p'],
+                      'b' => $parsed['b'], 'r' => $parsed['r']];
             db_exec('UPDATE documents SET serials_json = ? WHERE id = ?',
                     [json_encode($lists, JSON_UNESCAPED_UNICODE), $id]);
         } catch (Throwable $e) {
@@ -632,7 +633,9 @@ function api_serials(int $id): void
         'ok'       => true,
         'order_no' => (string) $row['order_no'],
         'lists'    => ['m' => array_values($lists['m'] ?? []),
-                       'p' => array_values($lists['p'] ?? [])],
+                       'p' => array_values($lists['p'] ?? []),
+                       'b' => array_values($lists['b'] ?? []),
+                       'r' => array_values($lists['r'] ?? [])],
         'selected' => [
             'm' => (string) (db_one('SELECT serial_m FROM documents WHERE id = ?', [$id])['serial_m'] ?? ''),
             'p' => (string) (db_one('SELECT serial_p FROM documents WHERE id = ?', [$id])['serial_p'] ?? ''),

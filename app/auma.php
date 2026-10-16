@@ -528,21 +528,24 @@ function auma_extract_article(string $html): string
 }
 
 /**
- * Серийные номера из строки «Serials:» — отдельно моторы и приводы.
+ * Серийные номера из строки «Serials:» — по видам изделий.
  *
- * Определяем по позиции, а не по буквам: в отчётах буквенные пары разные
- * (NM/NS в одном заказе, MA/MD/MM в другом), а порядок постоянный —
- * сначала идут моторы, потом приводы. Список делится пополам: первая
- * половина моторы, вторая приводы. Заказ 23059102:
+ * Вид определяется буквенной парой в номере, например 1515NM94475:
+ * четыре цифры, две буквы, дальше цифры.
  *
- *   Serials: 1515NM94475, 1515NM94476, 1515NM94477, 1515NM94478,
- *            1515NS39968, 1515NS39969, 1515NS39970, 1515NS39971
+ *   MD, NS  -> приводы            p
+ *   MA      -> блоки управления   b
+ *   MM, NM  -> моторы             m
+ *   CG, MK  -> редукторы          r
  *
- * @return array{m: string[], p: string[], all: string[]}
+ * Номера с незнакомой парой попадают только в общий список all:
+ * отнести их не к чему, а гадать не стоит.
+ *
+ * @return array{m:string[],p:string[],b:string[],r:string[],all:string[]}
  */
 function auma_serials(string $html): array
 {
-    $out = ['m' => [], 'p' => [], 'all' => []];
+    $out = ['m' => [], 'p' => [], 'b' => [], 'r' => [], 'all' => []];
     $text = auma_text($html);
     // Двоеточие обязательно, а «s» в конце — нет. Иначе шаблон цепляется
     // за подсказку AUMA «Serial number for the search» и захватывает
@@ -553,7 +556,6 @@ function auma_serials(string $html): array
         return $out;
     }
 
-    // номера вида 1515NM94475: четыре цифры, две буквы, пять цифр
     preg_match_all('/\d{4}[A-Z]{2}\d{4,}/i', $m[1], $nums);
     $all = [];
     foreach ($nums[0] as $n) {
@@ -564,10 +566,21 @@ function auma_serials(string $html): array
     }
     $out['all'] = $all;
 
-    // первая половина — моторы, вторая — приводы
-    $half = (int) ceil(count($all) / 2);
-    $out['m'] = array_slice($all, 0, $half);
-    $out['p'] = array_slice($all, $half);
+    $byPair = [
+        'MD' => 'p', 'NS' => 'p',
+        'MA' => 'b',
+        'MM' => 'm', 'NM' => 'm',
+        'CG' => 'r', 'MK' => 'r',
+    ];
+    foreach ($all as $n) {
+        if (!preg_match('/^\d{4}([A-Z]{2})\d+$/', $n, $p)) {
+            continue;
+        }
+        $kind = $byPair[$p[1]] ?? '';
+        if ($kind !== '') {
+            $out[$kind][] = $n;
+        }
+    }
     return $out;
 }
 
