@@ -198,11 +198,10 @@ function motor_aliases(): array
         'Пусковой ток авт. выкл., A'   => ['tok.off.a'],
         'Контактор'                    => ['kontaktor'],
         'Тиристор'                     => ['tiristor'],
-        'Режим работы1'                => ['operating.mode'],
+        'operating.mode'               => ['operating.mode'],
         'nom speed'                    => ['speed.rpm'],
         'Высоковольтные испытания [kV]' => ['high.v.test.kvt'],
-    ];
-}
+    ];}
 
 /**
  * Найти колонку по списку возможных названий (в порядке приоритета).
@@ -840,8 +839,7 @@ function passport_values(array $chars, array $rules, string $order, string $html
         '{{Type}}'                 => $fromMotor('Тип'),
         '{{nom.power.kvt}}'        => $fromMotor('P_N, кВт1'),
         '{{Motor-kW}}'             => $fromMotor('P_N, кВт'),
-        '{{operating.mode}}'       => $fromMotor('Режим работы1'),
-        '{{Type of duty}}'         => $fromMotor('Режим работы1'),
+        '{{Type of duty}}'         => $fromMotor('operating.mode'),
         '{{nom.tok.a}}'            => $fromMotor('I_N, A'),
         '{{pysk.tok.a}}'           => $fromMotor('I_A, A'),
         '{{cos}}'                  => $fromMotor('cos') ?: $fromMotor('cos φ'),
