@@ -1508,6 +1508,10 @@ function passport_fill(string $template, array $values, string $dst): array
     }
 
     $stream = (string) file_get_contents($qdf);
+    // Сохраняем исходный текст шаблона: по нему ниже определяем, есть ли
+    // плейсхолдер в шаблоне вообще. Если его там нет, сообщать о нём как
+    // о ненайденном не нужно — вставлять значение просто некуда.
+    $templateText = $stream;
     $maps = pdf_tounicode_maps($stream);
     $fonts = pdf_glyph_fonts($stream);
 
@@ -1565,10 +1569,19 @@ function passport_fill(string $template, array $values, string $dst): array
 
     $report['placed'] = count($found);
     $report['hits'] = array_sum($found);
+    $report['not_in_template'] = [];
     foreach ($values as $name => $value) {
-        if (!isset($found[$name]) && $value !== '') {
-            $report['missing'][] = (string) $name;
+        if (isset($found[$name]) || $value === '') {
+            continue;
         }
+        // Плейсхолдера нет в шаблоне — это не ошибка подстановки,
+        // а просто неиспользуемое значение. Отдельный список, чтобы
+        // не путать с настоящими пропусками.
+        if (strpos($templateText, (string) $name) === false) {
+            $report['not_in_template'][] = (string) $name;
+            continue;
+        }
+        $report['missing'][] = (string) $name;
     }
 
     if ($report['placed'] === 0) {
