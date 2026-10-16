@@ -384,9 +384,14 @@ async function openSerials(id) {
     let dirty = false;
     back.addEventListener('click', async (e) => {
         if (e.target === back || e.target.closest('[data-close]')) {
+            // Запоминаем прокрутку: refreshAll перерисовывает таблицу,
+            // и браузер сбрасывает позицию в начало страницы.
+            const y = window.scrollY;
             back.remove();
             if (dirty) {
                 await refreshAll();
+                window.scrollTo(0, y);
+                requestAnimationFrame(() => window.scrollTo(0, y));
             }
             return;
         }
