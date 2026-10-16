@@ -781,11 +781,28 @@ function init() {
         toast('Создание паспорта появится позже');
     });
 
-    // Формат
+    // Формат. eng — это английская версия, она же веб: у AUMA язык
+    // задаётся отдельным полем и всегда английский, поэтому eng и web
+    // означают одно и то же и подсвечены вместе.
     $$('#fmtTabs .fmt').forEach(b => b.addEventListener('click', () => {
-        $$('#fmtTabs .fmt').forEach(x => x.classList.remove('active'));
-        b.classList.add('active');
-        state.fmt = b.dataset.fmt;
+        const picked = b.dataset.fmt;
+        if (picked === 'eng') {
+            // выбор языка не меняет формат: остаётся как был
+            return;
+        }
+        $$('#fmtTabs .fmt').forEach(x => {
+            if (x.dataset.fmt !== 'eng') {
+                x.classList.remove('active');
+            }
+        });
+        if (picked === 'web') {
+            b.classList.add('active');
+            const eng = $('#fmtTabs .fmt[data-fmt="eng"]');
+            if (eng) eng.classList.add('active');
+        } else {
+            b.classList.add('active');
+        }
+        state.fmt = picked;
     }));
 
     // Заказ
