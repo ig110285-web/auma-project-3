@@ -14,7 +14,7 @@ const state = {
     folders: [],
     groups: [],
     order: '',
-    fmt: 'pdf',
+    fmt: 'web',
     menuDocId: null,
     mailDocId: null,
     // отмеченные галочками документы — для массового удаления

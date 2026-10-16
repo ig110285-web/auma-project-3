@@ -130,10 +130,8 @@ $initial = mb_strtoupper(mb_substr($u['name'] !== '' ? $u['name'] : $u['email'],
                     <input class="order-input" id="orderInput" type="text" inputmode="numeric"
                            placeholder="23080383" autocomplete="off">
                     <div class="fmt-tabs" id="fmtTabs">
-                        <button type="button" class="fmt" data-fmt="eng">eng</button>
-                        <button type="button" class="fmt" data-fmt="de">de</button>
-                        <button type="button" class="fmt" data-fmt="web">web</button>
-                        <button type="button" class="fmt active" data-fmt="pdf">pdf</button>
+                        <button type="button" class="fmt active" data-fmt="web">web</button>
+                        <button type="button" class="fmt" data-fmt="pdf">pdf</button>
                     </div>
                 </div>
                 <div class="order-hint" id="orderHint"></div>
