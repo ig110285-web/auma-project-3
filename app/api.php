@@ -610,7 +610,8 @@ function api_serials(int $id): void
         $in = json_input();
         $set = [];
         $params = [];
-        foreach (['m' => 'serial_m', 'p' => 'serial_p'] as $key => $col) {
+        foreach (['m' => 'serial_m', 'p' => 'serial_p',
+                  'b' => 'serial_b', 'r' => 'serial_r'] as $key => $col) {
             if (!array_key_exists($key, $in)) {
                 continue;
             }
@@ -639,6 +640,8 @@ function api_serials(int $id): void
         'selected' => [
             'm' => (string) (db_one('SELECT serial_m FROM documents WHERE id = ?', [$id])['serial_m'] ?? ''),
             'p' => (string) (db_one('SELECT serial_p FROM documents WHERE id = ?', [$id])['serial_p'] ?? ''),
+            'b' => (string) (db_one('SELECT serial_b FROM documents WHERE id = ?', [$id])['serial_b'] ?? ''),
+            'r' => (string) (db_one('SELECT serial_r FROM documents WHERE id = ?', [$id])['serial_r'] ?? ''),
         ],
     ]);
 }
@@ -748,7 +751,11 @@ function api_passport(int $id): void
     // Серийные номера выбирает человек в таблице документов: в отчёте их
     // несколько, и какой из них попадёт в паспорт, решает он. Выбранный
     // номер перекрывает то, что нашлось бы по правилам.
-    foreach (['m' => '{{serial number-m}}', 'p' => '{{serial number-p}}'] as $k => $ph) {
+    // Блоки управления и редукторы — на будущее: плейсхолдеров для них
+    // в шаблоне пока нет, подстановка просто не найдёт их и ничего
+    // не изменит.
+    foreach (['m' => '{{serial number-m}}', 'p' => '{{serial number-p}}',
+              'b' => '{{serial number-b}}', 'r' => '{{serial number-r}}'] as $k => $ph) {
         $chosen = trim((string) ($doc['serial_' . $k] ?? ''));
         if ($chosen !== '') {
             $values[$ph] = $chosen;
