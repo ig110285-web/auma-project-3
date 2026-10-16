@@ -552,16 +552,23 @@ function auma_serials(string $html): array
     // совершенно другой кусок текста.
     // Флаг u здесь тоже нельзя: .htm приходит не в UTF-8, и preg_match
     // с ним молча возвращает false вместо совпадения.
-    if (!preg_match('/Serials?\s*:\s*(.{4,400})/is', $text, $m)) {
+    // Строк «Serials:» в отчёте может быть несколько — по одной на позицию:
+    // сначала список привода, дальше список блока управления. Читаем все,
+    // иначе номера второй позиции теряются.
+    if (!preg_match_all('/Serials?\s*:\s*(.{4,400})/is', $text, $mm)) {
         return $out;
     }
 
-    preg_match_all('/\d{4}[A-Z]{2}\d{4,}/i', $m[1], $nums);
     $all = [];
-    foreach ($nums[0] as $n) {
-        $n = strtoupper($n);
-        if (!in_array($n, $all, true)) {
-            $all[] = $n;
+    foreach ($mm[1] as $chunk) {
+        if (!preg_match_all('/\d{4}[A-Z]{2}\d{4,}/i', $chunk, $nums)) {
+            continue;
+        }
+        foreach ($nums[0] as $n) {
+            $n = strtoupper($n);
+            if (!in_array($n, $all, true)) {
+                $all[] = $n;
+            }
         }
     }
     $out['all'] = $all;
