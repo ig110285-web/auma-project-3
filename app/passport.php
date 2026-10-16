@@ -1544,13 +1544,20 @@ function passport_fill(string $template, array $values, string $dst): array
         }
 
         $assembled .= substr($stream, $pos, $bodyStart - $pos);
-        $assembled .= passport_replace_in_stream(
+        $body = passport_replace_in_stream(
             substr($stream, $bodyStart, $end - $bodyStart),
             $values,
             $found,
             $maps,
             $fonts
         );
+
+        // Последний проход: если плейсхолдер не нашёлся — например, поиск
+        // не совпал из-за разбитого текста — убираем его из документа.
+        // В паспорте не должно оставаться надписей вида {{...}}.
+        $body = preg_replace('/\{\{[^{}\x00-\x1f]{1,60}\}\}/', '', $body) ?? $body;
+
+        $assembled .= $body;
         $assembled .= 'endstream';
         $pos = $end + 9;
     }
