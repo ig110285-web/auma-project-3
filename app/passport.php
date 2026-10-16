@@ -200,7 +200,6 @@ function motor_aliases(): array
         'Тиристор'                     => ['tiristor'],
         'Режим работы1'                => ['operating.mode'],
         'nom speed'                    => ['speed.rpm'],
-        'Холостой ток авт. выкл., A'    => ['tok.holost.hoda'],
         'Высоковольтные испытания [kV]' => ['high.v.test.kvt'],
     ];
 }
@@ -849,11 +848,8 @@ function passport_values(array $chars, array $rules, string $order, string $html
         '{{speed.rpm}}'            => $fromMotor('Номинальная скорость, об/мин'),
         // холостой ток и высоковольтные испытания в шаблоне стоят
         // с одним знаком после запятой: 0,616 -> 0,6, 0,6776 -> 0,7
-        '{{high.v.test.kvt}}'      => ru_round1($fromMotor('Высоковольтные испытания [kV]')),
-        '{{tok.holost.hoda}}'      => ru_round1($fromMotor('Холостой ток авт. выкл., A')),
-        // в шаблоне этот плейсхолдер набран по-русски, а не английским
-        // именем колонки — правило его не покрывает, заполняем кодом
-        '{{Холостой ток авт. выкл., A}}' => ru_round1($fromMotor('Холостой ток авт. выкл., A')),
+        '{{high.v.test.kvt}}'      => ru_round1($fromMotor('high.v.test.kvt')),
+        '{{tok.holost.hoda}}'      => ru_round1($fromMotor('tok.holost.hoda')),
     ];
 
     // плейсхолдеры, которых нет в списке выше, добираем по правилам:
