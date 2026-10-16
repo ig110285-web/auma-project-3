@@ -234,10 +234,10 @@ function renderDocs() {
             <td>
                 <div class="actions">
                     ${d.has_motor_ref ? `
-                    <button class="act serial ${d.serial_m ? 'ok' : ''}" data-act="serial-m" data-id="${d.id}"
-                            title="${d.serial_m ? 'Мотор: ' + esc(d.serial_m) : 'Выбрать серийный номер мотора'}">м</button>
-                    <button class="act serial ${d.serial_p ? 'ok' : ''}" data-act="serial-p" data-id="${d.id}"
-                            title="${d.serial_p ? 'Привод: ' + esc(d.serial_p) : 'Выбрать серийный номер привода'}">п</button>` : ''}
+                    <button class="act serial ${d.serial_m && d.serial_p ? 'ok' : ''}" data-act="serials" data-id="${d.id}"
+                            title="${d.serial_m || d.serial_p
+                                ? 'Мотор: ' + esc(d.serial_m || '—') + ', привод: ' + esc(d.serial_p || '—')
+                                : 'Выбрать серийные номера мотора и привода'}">М-П</button>` : ''}
                     <button class="act passport" data-act="passport" data-id="${d.id}" title="Создать паспорт">
                         <svg viewBox="0 0 24 24" width="17" height="17">
                             <path d="M6 3h8l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
@@ -335,11 +335,12 @@ async function refreshAll() {
 /* ---------------- Серийные номера ---------------- */
 
 /**
- * Окно выбора серийного номера — мотора или привода.
- * Список приходит из отчёта и уже разбит пополам: первая половина моторы,
- * вторая приводы. Выбрал номер — окно закрывается, буква становится зелёной.
+ * Окно выбора серийных номеров: мотор и привод в одном месте.
+ * Списки приходят из отчёта и разобраны по буквенной паре в номере:
+ * MM и NM — моторы, MD и NS — приводы. Выбор сохраняется сразу,
+ * окно закрывается кнопкой «Готово», тогда же обновляется таблица.
  */
-async function openSerials(id, kind) {
+async function openSerials(id) {
     const doc = state.docs.find(d => String(d.id) === String(id));
     let data;
     try {
@@ -348,60 +349,82 @@ async function openSerials(id, kind) {
         toast('Не удалось получить список номеров: ' + e.message, 'err');
         return;
     }
-    const list = (data.lists && data.lists[kind]) || [];
-    const current = (data.selected && data.selected[kind]) || '';
-    const title = kind === 'm' ? 'Серийный номер мотора' : 'Серийный номер привода';
 
-    if (!list.length) {
-        toast('В отчёте этого заказа серийных номеров нет', 'err');
-        return;
-    }
+    const lists = data.lists || {};
+    const sel = data.selected || {};
+
+    const section = (kind, title, list) => `
+        <div class="serial-block">
+            <div class="serial-head">${esc(title)}</div>
+            <div class="serial-list" data-list="${kind}">
+                ${list.length
+                    ? list.map(n => `<button type="button"
+                            class="serial-item${n === (sel[kind] || '') ? ' active' : ''}"
+                            data-kind="${kind}" data-num="${esc(n)}">${esc(n)}</button>`).join('')
+                    : '<span class="serial-none">в отчёте нет таких номеров</span>'}
+            </div>
+        </div>`;
 
     const back = document.createElement('div');
     back.className = 'modal-backdrop';
-    back.innerHTML =
-        '<div class="modal"><h3>' + esc(title) + '</h3>'
-        + '<p class="modal-sub">' + esc(doc ? doc.filename : '') + '</p>'
-        + '<div class="serial-list">'
-        + list.map(n => '<button type="button" class="serial-item'
-            + (n === current ? ' active' : '') + '" data-num="' + esc(n) + '">'
-            + esc(n) + '</button>').join('')
-        + '</div>'
-        + '<div class="modal-actions">'
-        + (current ? '<button type="button" class="btn btn-ghost" data-clear="1">Снять выбор</button>' : '')
-        + '<button type="button" class="btn btn-ghost" data-close="1">Закрыть</button>'
-        + '</div></div>';
+    back.innerHTML = `
+        <div class="modal modal-wide">
+            <h3>Серийные номера</h3>
+            <p class="modal-sub">${esc(doc ? doc.filename : '')}</p>
+            ${section('m', 'Серийный номер мотора', lists.m || [])}
+            ${section('p', 'Серийный номер привода', lists.p || [])}
+            <div class="modal-actions">
+                <button type="button" class="btn btn-ghost" data-clear="1">Снять выбор</button>
+                <button type="button" class="btn btn-primary" data-close="1">Готово</button>
+            </div>
+        </div>`;
 
-    const close = () => back.remove();
+    let dirty = false;
     back.addEventListener('click', async (e) => {
         if (e.target === back || e.target.closest('[data-close]')) {
-            close();
+            back.remove();
+            if (dirty) {
+                await refreshAll();
+            }
             return;
         }
         if (e.target.closest('[data-clear]')) {
-            await saveSerial(id, kind, '');
-            close();
+            for (const kind of ['m', 'p']) {
+                back.querySelectorAll('.serial-item[data-kind="' + kind + '"].active')
+                    .forEach(x => x.classList.remove('active'));
+                await saveSerial(id, kind, '', false);
+            }
+            dirty = true;
             return;
         }
         const item = e.target.closest('.serial-item');
         if (!item) {
             return;
         }
-        await saveSerial(id, kind, item.dataset.num);
-        close();
+        const kind = item.dataset.kind;
+        back.querySelectorAll('.serial-item[data-kind="' + kind + '"]')
+            .forEach(x => x.classList.remove('active'));
+        item.classList.add('active');
+        await saveSerial(id, kind, item.dataset.num, false);
+        dirty = true;
     });
+
     document.body.appendChild(back);
 }
 
-async function saveSerial(id, kind, value) {
+async function saveSerial(id, kind, value, refresh = true) {
     try {
         await api('/api/documents/' + id + '/serials', {
             method: 'POST',
             body: kind === 'm' ? { m: value } : { p: value }
         });
-        // перечитываем список с сервера: так значки точно совпадут с базой
-        await refreshAll();
-        toast(value ? 'Выбран номер ' + value : 'Выбор снят', 'ok');
+        const doc = state.docs.find(d => String(d.id) === String(id));
+        if (doc) {
+            if (kind === 'm') { doc.serial_m = value; } else { doc.serial_p = value; }
+        }
+        if (refresh) {
+            await refreshAll();
+        }
     } catch (e) {
         toast('Не удалось сохранить: ' + e.message, 'err');
     }
@@ -825,8 +848,7 @@ function init() {
         const id = parseInt(btn.dataset.id, 10);
         if (btn.dataset.act === 'menu') { e.preventDefault(); openRowMenu(id, btn); }
         if (btn.dataset.act === 'passport') { e.preventDefault(); createPassport(id); }
-        if (btn.dataset.act === 'serial-m') { e.preventDefault(); openSerials(id, 'm'); }
-        if (btn.dataset.act === 'serial-p') { e.preventDefault(); openSerials(id, 'p'); }
+        if (btn.dataset.act === 'serials') { e.preventDefault(); openSerials(id); }
         if (btn.dataset.act === 'download') { e.preventDefault(); downloadDoc(id); }
     });
 

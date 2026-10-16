@@ -379,25 +379,30 @@ a.file-name:hover { color: var(--blue); text-decoration: underline; }
 
 /* ---------------- Серийные номера ---------------- */
 
-/* Значки «м» и «п» слева от кнопки «создать паспорт»:
-   красные, пока номер не выбран, зелёные после выбора. */
+/* Кнопка «М-П» слева от «создать паспорт»: красная, пока не выбраны
+   оба номера, зелёная — когда выбраны и мотор, и привод. */
 .act.serial {
-    width: 26px; height: 26px; border-radius: 8px;
-    font-size: 13px; font-weight: 700; line-height: 1;
+    width: 40px; height: 26px; border-radius: 8px;
+    font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: .2px;
     color: #d92d20; background: #fef3f2; border: 1px solid #fecdca;
 }
 .act.serial:hover { background: #fee4e2; }
 .act.serial.ok { color: #067647; background: #ecfdf3; border-color: #abefc6; }
 .act.serial.ok:hover { background: #d1fadf; }
 
+/* Окно выбора: два списка рядом */
+.modal-wide { max-width: 720px; }
+.serial-block { margin-top: 14px; }
+.serial-head { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.serial-none { font-size: 12.5px; color: var(--ink-3); }
 .serial-list {
-    display: flex; flex-direction: column; gap: 6px;
-    max-height: 320px; overflow-y: auto; margin: 10px 0 4px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    max-height: 190px; overflow-y: auto;
 }
 .serial-item {
-    text-align: left; padding: 9px 12px; border-radius: 9px;
+    padding: 7px 11px; border-radius: 9px;
     border: 1px solid var(--line); background: #fff;
-    font-size: 13px; font-family: ui-monospace, Consolas, monospace;
+    font-size: 12.5px; font-family: ui-monospace, Consolas, monospace;
     cursor: pointer;
 }
 .serial-item:hover { background: #f5f7fa; border-color: #cfd6e4; }
