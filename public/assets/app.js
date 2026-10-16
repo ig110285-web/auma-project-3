@@ -371,8 +371,8 @@ async function openSerials(id) {
         <div class="modal modal-wide">
             <h3>Серийные номера</h3>
             <p class="modal-sub">${esc(doc ? doc.filename : '')}</p>
-            ${section('m', 'Серийный номер мотора', lists.m || [])}
             ${section('p', 'Серийный номер привода', lists.p || [])}
+            ${section('m', 'Серийный номер мотора', lists.m || [])}
             <div class="modal-actions">
                 <button type="button" class="btn btn-ghost" data-clear="1">Снять выбор</button>
                 <button type="button" class="btn btn-primary" data-close="1">Готово</button>
