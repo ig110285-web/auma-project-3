@@ -772,6 +772,16 @@ function api_passport(int $id): void
         }
     }
 
+    // У блочного паспорта нет строки Type в отчёте — она была в общей
+    // части файла, а в куске позиции её нет. Берём тип из артикула
+    // документа: ACEXC-01.2 -> ACEXC 01.2, тире заменяется пробелом.
+    if ($kind === 'control' && trim((string) ($values['{{Type}}'] ?? '')) === '') {
+        $art = trim((string) $doc['article']);
+        if ($art !== '') {
+            $values['{{Type}}'] = str_replace('-', ' ', $art);
+        }
+    }
+
     // собираем во временный файл, а в хранилище кладём уже готовое
     $tmp = sys_get_temp_dir() . '/auma_passport_' . getmypid() . '_' . bin2hex(random_bytes(4)) . '.pdf';
     $report = passport_fill($template, $values, $tmp);

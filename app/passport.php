@@ -872,7 +872,10 @@ function passport_values(array $chars, array $rules, string $order, string $html
     ];
 
     // плейсхолдеры, которых нет в списке выше, добираем по правилам:
-    // источник — строка .htm, колонка — Order code или Description
+    // источник — строка .htm, колонка — Order code или Description.
+    // В правилах источник иногда записан вариантами через «или»:
+    // «Ex electrical connection или WP electrical connection». Берём
+    // первый, который в отчёте действительно есть.
     $values = [];
     foreach ($rules as $rule) {
         $ph = $rule['ph'];
@@ -880,8 +883,16 @@ function passport_values(array $chars, array $rules, string $order, string $html
             $values[$ph] = (string) $special[$ph];
             continue;
         }
-        $src = rtrim($rule['source'], ':');
-        $cell = $chars[$src] ?? null;
+        $raw = rtrim($rule['source'], ':');
+        $variants = preg_split('/\s+или\s+/iu', $raw) ?: [$raw];
+        $cell = null;
+        foreach ($variants as $variant) {
+            $variant = rtrim(trim($variant), ':');
+            if ($variant !== '' && isset($chars[$variant])) {
+                $cell = $chars[$variant];
+                break;
+            }
+        }
         if ($cell === null) {
             $values[$ph] = '';
             continue;
