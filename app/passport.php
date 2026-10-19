@@ -900,9 +900,22 @@ function passport_values(array $chars, array $rules, string $order, string $html
     // Правило в файле говорит словами: «1,2 цифра» и «3,4 цифра».
     // Берём все цифры значения по порядку и делим: первые две в t1,
     // следующие две в t2. Из «L-40-40» выходит 40 и 40.
+    //
+    // Колонку берём из правила: там указано Description, значит и читать
+    // надо описание, а не код. Раньше здесь всегда брался код.
     if (isset($values['{{t1}}']) || isset($values['{{t2}}'])) {
-        $temp = (string) ($chars['Temperature version']['code']
-            ?? $chars['Temperature version']['desc'] ?? '');
+        $ruleT = null;
+        foreach ($rules as $r2) {
+            if ($r2['ph'] === '{{t1}}' || $r2['ph'] === '{{t2}}') {
+                $ruleT = $r2;
+                break;
+            }
+        }
+        $srcName = $ruleT !== null ? rtrim($ruleT['source'], ':') : 'Temperature version';
+        $cell = $chars[$srcName] ?? null;
+        $column = $ruleT !== null ? passport_source_column($ruleT['column']) : 'code';
+        $temp = (string) ($cell[$column] ?? ($cell['code'] ?? ''));
+
         preg_match_all('/\d+/', $temp, $tm);
         $digits = implode('', $tm[0] ?? []);
         if (strlen($digits) >= 4) {
