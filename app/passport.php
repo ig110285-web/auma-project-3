@@ -896,6 +896,25 @@ function passport_values(array $chars, array $rules, string $order, string $html
         }
     }
 
+    // {{t1}} и {{t2}} — половинки значения Temperature version.
+    // Правило в файле говорит словами: «1,2 цифра» и «3,4 цифра».
+    // Берём все цифры значения по порядку и делим: первые две в t1,
+    // следующие две в t2. Из «L-40-40» выходит 40 и 40.
+    if (isset($values['{{t1}}']) || isset($values['{{t2}}'])) {
+        $temp = (string) ($chars['Temperature version']['code']
+            ?? $chars['Temperature version']['desc'] ?? '');
+        preg_match_all('/\d+/', $temp, $tm);
+        $digits = implode('', $tm[0] ?? []);
+        if (strlen($digits) >= 4) {
+            if (isset($values['{{t1}}'])) {
+                $values['{{t1}}'] = substr($digits, 0, 2);
+            }
+            if (isset($values['{{t2}}'])) {
+                $values['{{t2}}'] = substr($digits, 2, 2);
+            }
+        }
+    }
+
     return $values;
 }
 
