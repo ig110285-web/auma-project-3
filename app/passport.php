@@ -1638,7 +1638,27 @@ function passport_fill(string $template, array $values, string $dst): array
             continue;
         }
 
-        $end = strpos($stream, 'endstream', $bodyStart);
+        // Конец потока берём по длине из словаря объекта. Раньше конец
+        // искался словом endstream — а оно встречается внутри двоичных
+        // данных картинок, и изображение разрезалось пополам. На обложке
+        // это было видно: приборы разваливались на части.
+        $dict = substr($stream, max(0, $s - 500), min(500, $s));
+        $wanted = null;
+        if (preg_match('/\/Length\s+(\d+)\s+0\s+R/', $dict, $lm)) {
+            // длина задана ссылкой на объект: 12 0 obj 1250 endobj
+            if (preg_match('/(?m)^' . $lm[1] . '\s+0\s+obj\s*(\d+)\s*endobj/', $stream, $ref)) {
+                $wanted = (int) $ref[1];
+            }
+        } elseif (preg_match('/\/Length\s+(\d+)(?!\s+0\s+R)/', $dict, $lm)) {
+            $wanted = (int) $lm[1];
+        }
+
+        $end = ($wanted !== null
+            && $wanted > 0
+            && $bodyStart + $wanted + 9 <= $len
+            && substr($stream, $bodyStart + $wanted, 9) === 'endstream')
+            ? $bodyStart + $wanted
+            : strpos($stream, 'endstream', $bodyStart);
         if ($end === false) {
             $assembled .= substr($stream, $pos);
             break;
