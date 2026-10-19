@@ -900,7 +900,18 @@ function passport_values(array $chars, array $rules, string $order, string $html
             $values[$ph] = '';
             continue;
         }
-        $values[$ph] = trim((string) ($cell[passport_source_column($rule['column'])] ?? ''));
+        $val = trim((string) ($cell[passport_source_column($rule['column'])] ?? ''));
+
+        // Правило словами: «вместо тире, пробел». Читаем это из самого
+        // правила, а не зашиваем имена плейсхолдеров в код — так правило
+        // заработает для {{Article}}, {{Article2}} и любого следующего.
+        if (preg_match('/вместо\s+тире/iu', (string) ($rule['rule'] ?? ''))) {
+            $val = str_replace(['-', '–', '—', '−'], ' ', $val);
+            $val = (string) preg_replace('/\s+/u', ' ', $val);
+            $val = trim($val);
+        }
+
+        $values[$ph] = $val;
     }
 
     // на случай плейсхолдеров, которых нет в файле правил
