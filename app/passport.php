@@ -1490,29 +1490,10 @@ function passport_replace_in_stream(
                 // случайные знаки или пустоту. Поэтому такие значения
                 // кодируем номерами глифов, как это уже делается для
                 // глифовых плейсхолдеров.
-                $text = null;
-                $tf = pdf_font_before($stream, $first['start']);
-                if ($tf !== null) {
-                    $map = $maps[$tf['name']] ?? null;
-                    if ($map === null) {
-                        foreach ($fonts as $fontName => $info) {
-                            if ($fontName === $tf['name'] && !empty($info['identity'])) {
-                                $map = $info['map'] ?? [];
-                                break;
-                            }
-                        }
-                    }
-                    if (is_array($map)) {
-                        $hex = pdf_encode_glyphs($value, $map);
-                        if ($hex !== null) {
-                            $text = '<' . $hex . '>';
-                        }
-                    }
-                }
                 $edits[] = [
                     'start' => $first['start'],
                     'len'   => $first['len'],
-                    'text'  => $text ?? pdf_escape($value),
+                    'text'  => pdf_escape($value),
                 ];
             }
 
@@ -1665,6 +1646,22 @@ function passport_fill(string $template, array $values, string $dst): array
         }
 
         $assembled .= substr($stream, $pos, $bodyStart - $pos);
+
+        // Двоичные потоки — картинки — не трогаем вовсе. В сжатом JPEG
+        // случайные байты могут совпасть с образцом поиска, и замена
+        // портит изображение: на обложке приборы рассыпались на куски.
+        $dictHead = substr($stream, max(0, $s - 500), min(500, $s));
+        if (strpos($dictHead, '/Image') !== false
+            || strpos($dictHead, '/DCTDecode') !== false
+            || strpos($dictHead, '/JPXDecode') !== false
+            || strpos($dictHead, '/CCITTFaxDecode') !== false
+            || strpos($dictHead, '/JBIG2Decode') !== false) {
+            $assembled .= substr($stream, $bodyStart, $end - $bodyStart);
+            $assembled .= 'endstream';
+            $pos = $end + 9;
+            continue;
+        }
+
         $body = passport_replace_in_stream(
             substr($stream, $bodyStart, $end - $bodyStart),
             $values,
