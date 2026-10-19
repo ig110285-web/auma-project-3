@@ -1473,10 +1473,35 @@ function passport_replace_in_stream(
                     ),
                 ];
             } else {
+                // Значение пишем так, чтобы его понял шрифт этого места.
+                // Если шрифт двухбайтовый (Identity-H), обычный текст в нём
+                // означает не буквы, а номера глифов: (AM 01.1)Tj выведет
+                // случайные знаки или пустоту. Поэтому такие значения
+                // кодируем номерами глифов, как это уже делается для
+                // глифовых плейсхолдеров.
+                $text = null;
+                $tf = pdf_font_before($stream, $first['start']);
+                if ($tf !== null) {
+                    $map = $maps[$tf['name']] ?? null;
+                    if ($map === null) {
+                        foreach ($fonts as $fontName => $info) {
+                            if ($fontName === $tf['name'] && !empty($info['identity'])) {
+                                $map = $info['map'] ?? [];
+                                break;
+                            }
+                        }
+                    }
+                    if (is_array($map)) {
+                        $hex = pdf_encode_glyphs($value, $map);
+                        if ($hex !== null) {
+                            $text = '<' . $hex . '>';
+                        }
+                    }
+                }
                 $edits[] = [
                     'start' => $first['start'],
                     'len'   => $first['len'],
-                    'text'  => pdf_escape($value),
+                    'text'  => $text ?? pdf_escape($value),
                 ];
             }
 
