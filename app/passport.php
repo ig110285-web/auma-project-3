@@ -887,7 +887,10 @@ function passport_values(array $chars, array $rules, string $order, string $html
         $variants = preg_split('/\s+или\s+/iu', $raw) ?: [$raw];
         $cell = null;
         foreach ($variants as $variant) {
-            $variant = rtrim(trim($variant), ':');
+            // в правилах имена иногда стоят в кавычках: "Terminal plan TPC"
+            $variant = trim($variant);
+            $variant = trim($variant, "\"'«»\u{00A0} \t\r\n");
+            $variant = rtrim($variant, ':');
             if ($variant !== '' && isset($chars[$variant])) {
                 $cell = $chars[$variant];
                 break;
