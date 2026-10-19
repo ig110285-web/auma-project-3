@@ -739,8 +739,14 @@ function api_passport(int $id): void
     if (!is_file($path)) {
         json_error('Файл документа не найден на диске', 404);
     }
-    if (!is_file(passport_template())) {
-        json_error('Нет шаблона паспорта privod-sa-passport.pdf', 500);
+    // У блоков управления свой шаблон и свои правила, у приводов свои.
+    $kind = passport_kind((string) $doc['article']);
+    $template = passport_template($kind);
+    if (!is_file($template)) {
+        json_error('Нет шаблона паспорта: ' . basename($template), 500);
+    }
+    if (!is_file(passport_rule_file($kind))) {
+        json_error('Нет правил паспорта: ' . basename(passport_rule_file($kind)), 500);
     }
 
     $html = (string) file_get_contents($path);
@@ -750,7 +756,7 @@ function api_passport(int $id): void
     }
 
     $order = (string) $doc['order_no'];
-    $values = passport_values($chars, passport_rules(), $order, $html);
+    $values = passport_values($chars, passport_rules($kind), $order, $html);
 
     // Серийные номера выбирает человек в таблице документов: в отчёте их
     // несколько, и какой из них попадёт в паспорт, решает он. Выбранный
@@ -768,7 +774,7 @@ function api_passport(int $id): void
 
     // собираем во временный файл, а в хранилище кладём уже готовое
     $tmp = sys_get_temp_dir() . '/auma_passport_' . getmypid() . '_' . bin2hex(random_bytes(4)) . '.pdf';
-    $report = passport_fill(passport_template(), $values, $tmp);
+    $report = passport_fill($template, $values, $tmp);
     if (!empty($report['error']) || !is_file($tmp)) {
         json_error(
             'Не удалось собрать паспорт: ' . ($report['error'] ?? 'файл не создан'),

@@ -113,14 +113,35 @@ function passport_dir(): string
     return dirname(__DIR__) . '/samples';
 }
 
-function passport_template(): string
+/**
+ * Шаблон паспорта. У блоков управления он свой, у приводов свой.
+ *
+ * @param string $kind drive | control
+ */
+function passport_template(string $kind = 'drive'): string
 {
-    return passport_dir() . '/privod-sa-passport.pdf';
+    return passport_dir() . ($kind === 'control'
+        ? '/blok-passport.pdf'
+        : '/privod-sa-passport.pdf');
 }
 
-function passport_rule_file(): string
+/**
+ * Правила паспорта. Для блоков управления отдельный файл — там свой
+ * набор плейсхолдеров и свой шаблон.
+ *
+ * @param string $kind drive | control
+ */
+function passport_rule_file(string $kind = 'drive'): string
 {
-    return passport_dir() . '/AUMA-motor-rule.xlsx';
+    return passport_dir() . ($kind === 'control'
+        ? '/AUMA-blok-rule.xlsx'
+        : '/AUMA-motor-rule.xlsx');
+}
+
+/** Вид паспорта по типу изделия: блоки управления или приводы. */
+function passport_kind(string $article): string
+{
+    return is_control_unit($article) ? 'control' : 'drive';
 }
 
 function passport_motor_file(): string
@@ -142,15 +163,15 @@ function passport_motor_file(): string
  *
  * @return array<int, array{ph:string, source:string, column:string, rule:string}>
  */
-function passport_rules(): array
+function passport_rules(string $kind = 'drive'): array
 {
-    static $rules = null;
-    if ($rules !== null) {
-        return $rules;
+    static $cache = [];
+    if (isset($cache[$kind])) {
+        return $cache[$kind];
     }
 
     $rules = [];
-    foreach (xlsx_rows(passport_rule_file(), 0) as $i => $row) {
+    foreach (xlsx_rows(passport_rule_file($kind), 0) as $i => $row) {
         if ($i === 0) {
             continue;   // заголовок
         }
@@ -166,7 +187,7 @@ function passport_rules(): array
             'rule'   => trim(preg_replace('/\s+/u', ' ', (string) ($row['D'] ?? ''))),
         ];
     }
-    return $rules;
+    return $cache[$kind] = $rules;
 }
 
 /** Колонка справочника, из которой берётся значение: 'code' или 'desc'. */
