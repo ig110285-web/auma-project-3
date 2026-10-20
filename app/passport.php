@@ -135,7 +135,7 @@ function passport_rule_file(string $kind = 'drive'): string
 {
     return passport_dir() . ($kind === 'control'
         ? '/AUMA-blok-rule.xlsx'
-        : '/AUMA-motor-rule.xlsx');
+        : '/AUMA-provod-rule.xlsx');
 }
 
 /** Вид паспорта по типу изделия: блоки управления или приводы. */
@@ -912,6 +912,20 @@ function passport_values(array $chars, array $rules, string $order, string $html
         }
 
         $values[$ph] = $val;
+    }
+
+    // {{Heater}} — из описания нагревателя берём диапазон напряжения.
+    // В правиле перечислены варианты записи, в паспорт идёт первый
+    // найденный: «110 V-250 V», «380 V-400 V», «24 V» и их слитные
+    // написания без пробела.
+    if (isset($values['{{Heater}}']) && trim((string) $values['{{Heater}}']) !== '') {
+        foreach (['110 V-250 V', '380 V-400 V', '110V-250V', '380V-400V',
+                  '110-250 V', '380-400 V', '24 V', '24V'] as $needle) {
+            if (stripos((string) $values['{{Heater}}'], $needle) !== false) {
+                $values['{{Heater}}'] = $needle;
+                break;
+            }
+        }
     }
 
     // на случай плейсхолдеров, которых нет в файле правил
